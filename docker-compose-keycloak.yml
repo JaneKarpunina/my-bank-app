@@ -1,0 +1,54 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: bank-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root_password
+      POSTGRES_DB: keycloak_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: bank-keycloak
+    command:
+      - start-dev
+      - --http-port=8080
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_HOSTNAME: localhost
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: root_password
+      KC_HOSTNAME_STRICT: "false"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  consul:
+    image: hashicorp/consul:1.15.4
+    container_name: bank-consul
+    command: "agent -dev -client=0.0.0.0 -ui"
+    ports:
+      - "8500:8500"
+#    healthcheck:
+#      test: [ "CMD", "consul", "members" ]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 5
+
+volumes:
+  pgdata:
