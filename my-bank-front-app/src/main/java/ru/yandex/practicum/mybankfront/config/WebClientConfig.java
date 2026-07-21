@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.config;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.oauth2.client.web.reactive.function.client.ServletOAuth2AuthorizedClientExchangeFilterFunction;
@@ -13,7 +14,8 @@ public class WebClientConfig {
     @Bean
     public WebClient webClient(
             ClientRegistrationRepository clientRegistrationRepository,
-            OAuth2AuthorizedClientRepository authorizedClientRepository) {
+            OAuth2AuthorizedClientRepository authorizedClientRepository,
+            @Value("${app.services.gateway-url}") String gatewayUrl) {
 
         ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter =
                 new ServletOAuth2AuthorizedClientExchangeFilterFunction(
@@ -21,12 +23,10 @@ public class WebClientConfig {
                         authorizedClientRepository
                 );
 
-        // Указываем имя клиента по умолчанию (из вашего application.properties: keycloak)
         oauth2Filter.setDefaultClientRegistrationId("keycloak");
 
         return WebClient.builder()
-                // URL вашего API Gateway (измените порт/хост, если отличаются)
-                .baseUrl("http://localhost:8085")
+                .baseUrl(gatewayUrl)
                 .apply(oauth2Filter.oauth2Configuration())
                 .build();
     }

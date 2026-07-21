@@ -1,53 +1,138 @@
 version: '3.8'
 
 services:
-  redis-reactive:
-    image: cr.yandex/mirror/redis:latest
-    container_name: redis-reactive
-    ports:
-      - "6379:6379"
-    networks:
-      market-network:
-        aliases:
-          - redis-reactive
-          - redis
-
-  payment-service:
-    build:
-      context: ./payment-service
-      dockerfile: Dockerfile
-    container_name: payment-service
-    ports:
-      - "8081:8081"
+  bank-postgres:
+    image: postgres:15-alpine
+    container_name: bank-postgres
     environment:
-      - SPRING_DATA_REDIS_HOST=redis-reactive
-      - SPRING_DATA_REDIS_PORT=6379
-    depends_on:
-      - redis-reactive
-    networks:
-      market-network:
-        aliases:
-          - payment-service
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root_password
+      POSTGRES_DB: keycloak_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  storefront-app:
-    build:
-      context: ./storefront-app
-      dockerfile: Dockerfile
-    container_name: storefront-app
+  consul:
+    image: hashicorp/consul:1.15.4
+    container_name: bank-consul
+    command: "agent -server -bootstrap-expect=1 -client=0.0.0.0 -ui"
+    ports:
+      - "8500:8500"
+    environment:
+      # Настройка, чтобы Consul понимал, где сохранять данные внутри контейнера
+      CONSUL_BIND_INTERFACE: "eth0"
+    volumes:
+      - consul_data:/consul/data
+    healthcheck:
+      test: [ "CMD", "consul", "members" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  bank-keycloak:
+    image: quay.io/keycloak/keycloak:24.0.5
+    container_name: bank-keycloak
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://bank-postgres:5432/keycloak_db
+      KC_DB_USERNAME: postgres
+      KC_DB_PASSWORD: root_password
+      KC_HOSTNAME_PROVIDER: "request"
+      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
     ports:
       - "8080:8080"
-    environment:
-      - PAYMENT_SERVICE_URL=http://payment-service:8081
-      - SPRING_DATA_REDIS_HOST=redis-reactive
-      - SPRING_DATA_REDIS_PORT=6379
     depends_on:
-      - payment-service
-      - redis-reactive
-    networks:
-      market-network:
-        aliases:
-          - storefront-app
+      bank-postgres:
+        condition: service_healthy
 
-networks:
-  market-network:
-    driver: bridge
+    healthcheck:
+      test: [ "CMD-SHELL", "sh -c 'echo > /dev/tcp/127.0.0.1/8080'" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # 1. Сервис аккаунтов
+  accounts-service:
+    build: ./accounts-service
+    container_name: bank-accounts
+    hostname: bank-accounts
+    ports:
+      - "8082:8082"
+    depends_on:
+      bank-postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_healthy
+    environment:
+      CONSUL_HOST: bank-consul
+      POSTGRES_HOST: bank-postgres
+      KEYCLOAK_HOST: bank-keycloak
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+
+  # 2. API Gateway
+  bank-gateway:
+    build: ./bank-gateway
+    container_name: bank-gateway
+    hostname: bank-gateway
+    ports:
+      - "8085:8085"
+    depends_on:
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_started
+    environment:
+      CONSUL_HOST: bank-consul
+      KEYCLOAK_HOST: bank-keycloak
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+      SPRING_CLOUD_CONSUL_DISCOVERY_INSTANCE_ID: "bank-gateway"
+
+
+  # 3. Сервис уведомлений
+  notification-service:
+    build: ./notification-service
+    container_name: bank-notification
+    ports:
+      - "8086:8086"
+    depends_on:
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_started
+    environment:
+      CONSUL_HOST: bank-consul
+      KEYCLOAK_HOST: bank-keycloak
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+
+  # 4. Фронтенд Thymeleaf
+  my-bank-front-app:
+    build: ./my-bank-front-app
+    container_name: bank-frontend
+    ports:
+      - "8084:8084"
+    depends_on:
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_healthy
+    environment:
+      CONSUL_HOST: bank-consul
+      KEYCLOAK_HOST: bank-keycloak
+      GATEWAY_HOST: bank-gateway
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+
+volumes:
+  pgdata:
+  consul_data:

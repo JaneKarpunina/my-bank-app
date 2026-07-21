@@ -125,7 +125,8 @@ public class MainController {
     public String editAccount(
             Model model,
             @RequestParam("name") String name,
-            @RequestParam("birthdate") @DateTimeFormat(pattern = "yyyy-dd-MM") LocalDate birthdate
+            @RequestParam("birthdate")  @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            LocalDate birthdate
     ) {
 
         UpdateAccountRequest updateRequest = new UpdateAccountRequest(name, birthdate);
