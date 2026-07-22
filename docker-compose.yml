@@ -133,6 +133,23 @@ services:
       GATEWAY_HOST: bank-gateway
       SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
 
+  transfer-service:
+    build: ./transfer-service
+    container_name: bank-transfers
+    ports:
+      - "8083:8083"
+    depends_on:
+      bank-postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_healthy
+    environment:
+      CONSUL_HOST: bank-consul
+      POSTGRES_HOST: bank-postgres
+      KEYCLOAK_HOST: bank-keycloak
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
 volumes:
   pgdata:
   consul_data:
