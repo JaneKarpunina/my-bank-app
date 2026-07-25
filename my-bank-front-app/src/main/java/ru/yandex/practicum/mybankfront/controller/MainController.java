@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -17,6 +18,7 @@ import ru.yandex.practicum.mybankfront.dto.UpdateAccountRequest;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 /**
  * Контроллер main.html.
@@ -78,13 +80,14 @@ public class MainController {
     @GetMapping("/account")
     public String getAccount(Model model) {
 
-        //String username = principal.getPreferredUsername();
-
         AccountResponse accountData = webClient.get()
                 .uri("/accounts")
                 .retrieve()
                 .bodyToMono(AccountResponse.class)
                 .block();
+
+        UUID idempotencyKey = UUID.randomUUID();
+        model.addAttribute("idempotencyKey", idempotencyKey);
 
         if (accountData != null) {
 
@@ -186,11 +189,58 @@ public class MainController {
     @PostMapping("/transfer")
     public String transfer(
             Model model,
+            @AuthenticationPrincipal OAuth2User principal,
             @RequestParam("value") int value,
-            @RequestParam("login") String login
+            @RequestParam("login") String loginRecipient,
+            @RequestParam("idempotencyKey") UUID idempotencyKey
     ) {
-        // TODO: Заменить на то, что описано в комментарии к методу
-        accountStub.transfer(model, value, login);
+        String currentUsername = principal.getAttribute("preferred_username");
+        List<String> errorList = new ArrayList<>();
+
+        try {
+            webClient.post()
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/transfers")
+                            .queryParam("sender", currentUsername)
+                            .queryParam("recipient", loginRecipient)
+                            .queryParam("amount", value)
+                            .build())
+                    .header("X-Idempotency-Key", idempotencyKey.toString())
+                    .retrieve()
+                    .toBodilessEntity()
+                    .block(); // Ждем завершения распределенной транзакции
+
+        } catch (Exception e) {
+            errorList.add("Ошибка перевода: " + e.getMessage());
+        }
+
+        model.addAttribute("idempotencyKey", UUID.randomUUID());
+
+        try {
+            AccountResponse accountData = webClient.get()
+                    .uri("/accounts")
+                    .retrieve()
+                    .bodyToMono(AccountResponse.class)
+                    .block();
+
+            if (accountData != null) {
+                model.addAttribute("name", accountData.getName());
+                model.addAttribute("birthdate", accountData.getBirthdate());
+                model.addAttribute("sum", accountData.getSum());
+                model.addAttribute("accounts", accountData.getAccounts());
+            }
+        } catch (Exception e) {
+            errorList.add("Не удалось мгновенно обновить баланс. Пожалуйста, обновите страницу.");
+
+            model.addAttribute("name", currentUsername);
+            model.addAttribute("birthdate", null);
+            model.addAttribute("sum", 0);
+            model.addAttribute("accounts", Collections.emptyList());
+        }
+
+        if (!errorList.isEmpty()) {
+            model.addAttribute("errors", errorList);
+        }
 
         return "main";
     }
