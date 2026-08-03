@@ -59,5 +59,30 @@ public class AccountService {
 
         outboxRepository.save(outboxMessage);
     }
+
+    @Transactional
+    public void executeMoneyMovement(String senderUsername, String recipientUsername, int amount) {
+
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
+        }
+
+        BankAccount sender = accountRepository.findByUsername(senderUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Отправитель '" + senderUsername + "' не найден"));
+
+
+        BankAccount recipient = accountRepository.findByUsername(recipientUsername)
+                .orElseThrow(() -> new IllegalArgumentException("Получатель '" + recipientUsername + "' не найден"));
+
+        if (sender.getBalance() < amount) {
+            throw new IllegalArgumentException("Недостаточно средств на счете пользователя " + senderUsername);
+        }
+
+        sender.setBalance(sender.getBalance() - amount);
+        recipient.setBalance(recipient.getBalance() + amount);
+
+        accountRepository.save(sender);
+        accountRepository.save(recipient);
+    }
 }
 

@@ -5,9 +5,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import ru.yandex.practicum.transfer.dto.EventEnvelope;
 import ru.yandex.practicum.transfer.entity.TransferOutboxMessage;
 import ru.yandex.practicum.transfer.repository.TransferOutboxRepository;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,10 +36,18 @@ public class TransferOutboxScheduler {
         for (TransferOutboxMessage message : pendingMessages) {
             try {
 
+                EventEnvelope envelope = new EventEnvelope(
+                        message.getId(),
+                        message.getEventType(),
+                        "TRANSFER",
+                        message.getPayload(),
+                        Instant.now()
+                );
+
                 internalServicesWebClient.post()
                         .uri(notificationServiceUrl + "/notifications/events")
                         .header("Content-Type", "application/json")
-                        .bodyValue(message.getPayload())
+                        .bodyValue(envelope)
                         .retrieve()
                         .toBodilessEntity()
                         .block();

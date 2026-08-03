@@ -26,12 +26,14 @@ services:
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
-      KC_HOSTNAME: localhost
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: root_password
+      KC_HOSTNAME_PROVIDER: "request"
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+      #KC_HOSTNAME: bank-keycloak
+      #KC_HOSTNAME_PROVIDER: "request"
     ports:
       - "8080:8080"
     depends_on:

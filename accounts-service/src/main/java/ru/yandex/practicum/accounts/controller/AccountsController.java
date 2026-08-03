@@ -6,6 +6,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.accounts.dto.AccountDto;
 import ru.yandex.practicum.accounts.dto.AccountResponse;
+import ru.yandex.practicum.accounts.dto.AccountTransferDto;
 import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
 import ru.yandex.practicum.accounts.entity.BankAccount;
 import ru.yandex.practicum.accounts.service.AccountService;
@@ -74,5 +75,12 @@ public class AccountsController {
         response.setAccounts(otherUsersDtoList);
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/execute-transfer")
+    public ResponseEntity<Void> executeTransfer(@RequestBody AccountTransferDto dto) {
+        accountService.executeMoneyMovement(dto.sender(), dto.recipient(), dto.amount());
+
+        return ResponseEntity.ok().build();
     }
 }

@@ -47,7 +47,8 @@ services:
       KC_DB_URL: jdbc:postgresql://bank-postgres:5432/keycloak_db
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: root_password
-      KC_HOSTNAME_PROVIDER: "request"
+      #KC_HOSTNAME_PROVIDER: "request"
+      KC_HOSTNAME: bank-keycloak
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
     ports:
       - "8080:8080"

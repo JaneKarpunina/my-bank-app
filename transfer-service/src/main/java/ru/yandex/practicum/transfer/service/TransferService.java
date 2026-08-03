@@ -99,7 +99,7 @@ public class TransferService {
             });
 
             NotificationEventDto eventDto = new NotificationEventDto(recipient,
-                    String.format("Вам поступил перевод на сумму %d руб. от пользователя %s", amount, sender));
+                    amount, sender);
 
             TransferOutboxMessage outboxMessage = new TransferOutboxMessage();
             outboxMessage.setId(UUID.randomUUID());

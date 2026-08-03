@@ -1,6 +1,7 @@
 package ru.yandex.practicum.transfer.controller;
 
 
+import ru.yandex.practicum.transfer.dto.TransferRequest;
 import ru.yandex.practicum.transfer.service.TransferService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,11 +20,10 @@ public class TransferInternalController {
     @PostMapping
     public ResponseEntity<Void> initiateTransfer(
             @RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
-            @RequestParam("sender") String sender,
-            @RequestParam("recipient") String recipient,
-            @RequestParam("amount") int amount
+            @RequestBody TransferRequest request
     ) {
-        transferService.executeTransfer(idempotencyKey, sender, recipient, amount);
+
+        transferService.executeTransfer(idempotencyKey, request.sender(), request.recipient(), request.amount());
         return ResponseEntity.ok().build();
     }
 }
