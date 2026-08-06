@@ -1,4 +1,4 @@
-package ru.yandex.practicum.transfer.dto;
+package ru.yandex.practicum.cash.dto;
 
 import java.time.Instant;
 import java.util.UUID;

@@ -4,10 +4,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
-import ru.yandex.practicum.accounts.dto.AccountDto;
-import ru.yandex.practicum.accounts.dto.AccountResponse;
-import ru.yandex.practicum.accounts.dto.AccountTransferDto;
-import ru.yandex.practicum.accounts.dto.UpdateAccountRequest;
+import ru.yandex.practicum.accounts.dto.*;
 import ru.yandex.practicum.accounts.entity.BankAccount;
 import ru.yandex.practicum.accounts.service.AccountService;
 
@@ -80,6 +77,13 @@ public class AccountsController {
     @PostMapping("/execute-transfer")
     public ResponseEntity<Void> executeTransfer(@RequestBody AccountTransferDto dto) {
         accountService.executeMoneyMovement(dto.sender(), dto.recipient(), dto.amount());
+
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/execute-cash")
+    public ResponseEntity<Void> executeCash(@RequestBody AccountOperationDto dto) {
+        accountService.executeCashOperation(dto.username(), dto.amount(), dto.action());
 
         return ResponseEntity.ok().build();
     }

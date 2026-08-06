@@ -151,6 +151,24 @@ services:
       POSTGRES_HOST: bank-postgres
       KEYCLOAK_HOST: bank-keycloak
       SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+
+  cash-service:
+    build: ./cash-service
+    container_name: bank-cash
+    ports:
+      - "8087:8087"
+    depends_on:
+      bank-postgres:
+        condition: service_healthy
+      consul:
+        condition: service_healthy
+      bank-keycloak:
+        condition: service_healthy
+    environment:
+      CONSUL_HOST: bank-consul
+      POSTGRES_HOST: bank-postgres
+      KEYCLOAK_HOST: bank-keycloak
+      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
 volumes:
   pgdata:
   consul_data:

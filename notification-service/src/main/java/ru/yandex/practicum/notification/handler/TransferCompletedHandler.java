@@ -5,8 +5,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.notification.dto.EventEnvelope;
 
-import java.time.LocalDate;
-
 @Component
 @Slf4j
 public class TransferCompletedHandler implements EventHandler {

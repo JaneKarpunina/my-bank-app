@@ -24,7 +24,7 @@ public class NotificationController {
         this.handlers = handlers;
     }
 
-    // Инициализируем карту при старте приложения
+
     @PostConstruct
     public void init() {
         for (EventHandler handler : handlers) {

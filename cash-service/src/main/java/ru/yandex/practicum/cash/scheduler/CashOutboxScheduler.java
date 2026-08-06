@@ -1,49 +1,51 @@
-package ru.yandex.practicum.accounts.scheduler;
+package ru.yandex.practicum.cash.scheduler;
 
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
-import ru.yandex.practicum.accounts.dto.EventEnvelope;
-import ru.yandex.practicum.accounts.entity.OutboxMessage;
-import ru.yandex.practicum.accounts.repository.OutboxRepository;
+import ru.yandex.practicum.cash.dto.EventEnvelope;
+import ru.yandex.practicum.cash.entity.CashOutboxMessage;
+import ru.yandex.practicum.cash.repository.CashOutboxRepository;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Component
-public class OutboxScheduler {
+public class CashOutboxScheduler {
 
-    private final OutboxRepository outboxRepository;
-    private final WebClient webClient;
+    private final CashOutboxRepository outboxRepository;
+    private final WebClient internalServicesWebClient;
+    private final String notificationServiceUrl;
 
-    public OutboxScheduler(
-            OutboxRepository outboxRepository,
-            @Qualifier("notificationWebClient") WebClient webClient) {
-
+    public CashOutboxScheduler(CashOutboxRepository outboxRepository,
+                                   WebClient internalServicesWebClient,
+                                   @Value("${app.services.notification-url}") String notificationServiceUrl) {
         this.outboxRepository = outboxRepository;
-        this.webClient = webClient;
+        this.internalServicesWebClient = internalServicesWebClient;
+        this.notificationServiceUrl = notificationServiceUrl;
     }
 
-
     @Scheduled(fixedDelay = 5000)
-    public void processOutboxMessages() {
-        List<OutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+    public void processCashOutboxMessages() {
 
-        for (OutboxMessage message : pendingMessages) {
+        List<CashOutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+
+        for (CashOutboxMessage message : pendingMessages) {
             try {
+
                 EventEnvelope envelope = new EventEnvelope(
                         message.getId(),
                         message.getEventType(),
-                        message.getAggregateType(),
+                        "CASH",
                         message.getPayload(),
                         Instant.now()
                 );
 
-
-                webClient.post()
-                        .uri("/notifications/events")
+                internalServicesWebClient.post()
+                        .uri(notificationServiceUrl + "/notifications/events")
                         .header("Content-Type", "application/json")
                         .bodyValue(envelope)
                         .retrieve()
@@ -53,7 +55,6 @@ public class OutboxScheduler {
                 updateMessageStatus(message.getId(), "PROCESSED", message.getAttempts());
 
             } catch (Exception e) {
-                System.err.println("Ошибка отправки outbox сообщения " + message.getId() + ": " + e.getMessage());
 
                 int currentAttempts = message.getAttempts() + 1;
                 String nextStatus = (currentAttempts >= 5) ? "FAILED" : "PENDING";
@@ -63,8 +64,9 @@ public class OutboxScheduler {
         }
     }
 
+
     @Transactional
-    public void updateMessageStatus(java.util.UUID id, String status, int attempts) {
+    public void updateMessageStatus(UUID id, String status, int attempts) {
         outboxRepository.findById(id).ifPresent(msg -> {
             msg.setStatus(status);
             msg.setAttempts(attempts);
@@ -72,5 +74,5 @@ public class OutboxScheduler {
         });
     }
 
-
 }
+

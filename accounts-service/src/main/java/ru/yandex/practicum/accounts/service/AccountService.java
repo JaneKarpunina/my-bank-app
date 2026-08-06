@@ -2,6 +2,7 @@ package ru.yandex.practicum.accounts.service;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.yandex.practicum.accounts.dto.CashAction;
 import ru.yandex.practicum.accounts.entity.BankAccount;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
@@ -83,6 +84,29 @@ public class AccountService {
 
         accountRepository.save(sender);
         accountRepository.save(recipient);
+    }
+
+    @Transactional
+    public void executeCashOperation(String username, int amount, CashAction action) {
+        if (amount <= 0) {
+            throw new IllegalArgumentException("Сумма операции должна быть больше нуля");
+        }
+
+        BankAccount account = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("Пользователь '" + username + "' не найден"));
+
+        if (action == CashAction.PUT) {
+            account.setBalance(account.getBalance() + amount);
+        } else if (action == CashAction.GET) {
+            if (account.getBalance() < amount) {
+                throw new IllegalArgumentException("Недостаточно виртуальных средств на счете для снятия наличных");
+            }
+            account.setBalance(account.getBalance() - amount);
+        } else {
+            throw new IllegalArgumentException("Неподдерживаемое действие: " + action);
+        }
+
+        accountRepository.save(account);
     }
 }
 
