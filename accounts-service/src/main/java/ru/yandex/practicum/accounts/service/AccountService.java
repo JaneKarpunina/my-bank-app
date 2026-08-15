@@ -1,11 +1,14 @@
 package ru.yandex.practicum.accounts.service;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.accounts.dto.CashAction;
 import ru.yandex.practicum.accounts.entity.BankAccount;
+import ru.yandex.practicum.accounts.entity.IdempotencyKey;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
 import ru.yandex.practicum.accounts.repository.AccountRepository;
+import ru.yandex.practicum.accounts.repository.IdempotencyRepository;
 import ru.yandex.practicum.accounts.repository.OutboxRepository;
 
 import java.time.LocalDate;
@@ -17,10 +20,13 @@ public class AccountService {
 
     private final AccountRepository accountRepository;
     private final OutboxRepository outboxRepository;
+    private final IdempotencyRepository idempotencyRepository;
 
-    public AccountService(AccountRepository accountRepository, OutboxRepository outboxRepository) {
+    public AccountService(AccountRepository accountRepository, OutboxRepository outboxRepository,
+                          IdempotencyRepository idempotencyRepository) {
         this.accountRepository = accountRepository;
         this.outboxRepository = outboxRepository;
+        this.idempotencyRepository = idempotencyRepository;
     }
 
     @Transactional(readOnly = true)
@@ -36,7 +42,12 @@ public class AccountService {
 
 
     @Transactional
-    public void updateClientInfo(String username, String newName, LocalDate newBirthDate) {
+    public void updateClientInfo(String username, String newName, LocalDate newBirthDate, UUID idempotencyKey) {
+
+        if (idempotencyRepository.existsById(idempotencyKey)) {
+            return;
+        }
+
         BankAccount account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Аккаунт не найден"));
 
@@ -59,10 +70,21 @@ public class AccountService {
         outboxMessage.setAttempts(0);
 
         outboxRepository.save(outboxMessage);
+
+        IdempotencyKey keyRecord = new IdempotencyKey();
+        keyRecord.setId(idempotencyKey);
+        keyRecord.setStatus("SUCCESS");
+        idempotencyRepository.save(keyRecord);
     }
 
     @Transactional
-    public void executeMoneyMovement(String senderUsername, String recipientUsername, int amount) {
+    public ResponseEntity<Void> executeMoneyMovement(String senderUsername, String recipientUsername, int amount,
+                                                     UUID idempotencyKey) {
+
+        if (idempotencyRepository.existsById(idempotencyKey)) {
+            return ResponseEntity.ok().build();
+        }
+
 
         if (amount <= 0) {
             throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
@@ -84,10 +106,23 @@ public class AccountService {
 
         accountRepository.save(sender);
         accountRepository.save(recipient);
+
+        IdempotencyKey key = new IdempotencyKey();
+        key.setId(idempotencyKey);
+        key.setStatus("SUCCESS");
+        idempotencyRepository.save(key);
+
+        return ResponseEntity.ok().build();
     }
 
     @Transactional
-    public void executeCashOperation(String username, int amount, CashAction action) {
+    public ResponseEntity<Void>  executeCashOperation(String username, int amount, CashAction action,
+                                                      UUID idempotencyKey) {
+
+        if (idempotencyRepository.existsById(idempotencyKey)) {
+            return ResponseEntity.ok().build();
+        }
+
         if (amount <= 0) {
             throw new IllegalArgumentException("Сумма операции должна быть больше нуля");
         }
@@ -107,6 +142,13 @@ public class AccountService {
         }
 
         accountRepository.save(account);
+
+        IdempotencyKey key = new IdempotencyKey();
+        key.setId(idempotencyKey);
+        key.setStatus("SUCCESS");
+        idempotencyRepository.save(key);
+
+        return ResponseEntity.ok().build();
     }
 }
 

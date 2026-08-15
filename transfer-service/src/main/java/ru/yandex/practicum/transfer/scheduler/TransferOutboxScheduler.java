@@ -3,29 +3,29 @@ package ru.yandex.practicum.transfer.scheduler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.reactive.function.client.WebClient;
+import ru.yandex.practicum.transfer.client.NotificationClient;
 import ru.yandex.practicum.transfer.dto.EventEnvelope;
 import ru.yandex.practicum.transfer.entity.TransferOutboxMessage;
 import ru.yandex.practicum.transfer.repository.TransferOutboxRepository;
+import ru.yandex.practicum.transfer.service.OutboxStatusService;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.UUID;
 
 @Component
 public class TransferOutboxScheduler {
 
     private final TransferOutboxRepository outboxRepository;
-    private final WebClient internalServicesWebClient;
-    private final String notificationServiceUrl;
+    private final OutboxStatusService outboxStatusService;
+    private final NotificationClient notificationClient;
 
     public TransferOutboxScheduler(TransferOutboxRepository outboxRepository,
-                                   WebClient internalServicesWebClient,
-                                   @Value("${app.services.notification-url}") String notificationServiceUrl) {
+                                   OutboxStatusService outboxStatusService,
+                                   NotificationClient notificationClient) {
         this.outboxRepository = outboxRepository;
-        this.internalServicesWebClient = internalServicesWebClient;
-        this.notificationServiceUrl = notificationServiceUrl;
+        this.outboxStatusService = outboxStatusService;
+        this.notificationClient = notificationClient;
     }
 
     @Scheduled(fixedDelay = 5000)
@@ -44,15 +44,9 @@ public class TransferOutboxScheduler {
                         Instant.now()
                 );
 
-                internalServicesWebClient.post()
-                        .uri(notificationServiceUrl + "/notifications/events")
-                        .header("Content-Type", "application/json")
-                        .bodyValue(envelope)
-                        .retrieve()
-                        .toBodilessEntity()
-                        .block();
+                notificationClient.sendNotification(envelope);
 
-                updateMessageStatus(message.getId(), "PROCESSED", message.getAttempts());
+                outboxStatusService.updateStatus(message.getId(), "PROCESSED", message.getAttempts());
 
             } catch (Exception e) {
                 System.err.println("Ошибка отправки трансфер-уведомления " + message.getId() + ": " + e.getMessage());
@@ -60,19 +54,9 @@ public class TransferOutboxScheduler {
                 int currentAttempts = message.getAttempts() + 1;
                 String nextStatus = (currentAttempts >= 5) ? "FAILED" : "PENDING";
 
-                updateMessageStatus(message.getId(), nextStatus, currentAttempts);
+                outboxStatusService.updateStatus(message.getId(), nextStatus, currentAttempts);
             }
         }
-    }
-
-
-    @Transactional
-    public void updateMessageStatus(UUID id, String status, int attempts) {
-        outboxRepository.findById(id).ifPresent(msg -> {
-            msg.setStatus(status);
-            msg.setAttempts(attempts);
-            outboxRepository.save(msg);
-        });
     }
 
 }

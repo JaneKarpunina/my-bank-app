@@ -1,17 +1,20 @@
 package ru.yandex.practicum.cash.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
+import ru.yandex.practicum.cash.client.AccountsClient;
 import ru.yandex.practicum.cash.dto.AccountOperationDto;
 import ru.yandex.practicum.cash.dto.CashRequest;
-import ru.yandex.practicum.cash.entity.IdempotencyKey;
 import ru.yandex.practicum.cash.entity.CashOutboxMessage;
-import ru.yandex.practicum.cash.repository.IdempotencyRepository;
+import ru.yandex.practicum.cash.entity.IdempotencyKey;
 import ru.yandex.practicum.cash.repository.CashOutboxRepository;
+import ru.yandex.practicum.cash.repository.IdempotencyRepository;
+
 import java.util.UUID;
 
 @Service
@@ -19,20 +22,20 @@ public class CashService {
 
     private final IdempotencyRepository idempotencyRepository;
     private final CashOutboxRepository outboxRepository;
-    private final WebClient internalServicesWebClient;
     private final ObjectMapper objectMapper;
-    private final String accountsServiceUrl;
+    private final TransactionTemplate transactionTemplate;
+    private final AccountsClient accountsClient;
 
     public CashService(IdempotencyRepository idempotencyRepository,
                        CashOutboxRepository outboxRepository,
-                       WebClient internalServicesWebClient,
                        ObjectMapper objectMapper,
-                       @Value("${app.services.accounts-url}") String accountsServiceUrl) {
+                       TransactionTemplate transactionTemplate,
+                       AccountsClient accountsClient) {
         this.idempotencyRepository = idempotencyRepository;
         this.outboxRepository = outboxRepository;
-        this.internalServicesWebClient = internalServicesWebClient;
         this.objectMapper = objectMapper;
-        this.accountsServiceUrl = accountsServiceUrl;
+        this.transactionTemplate = transactionTemplate;
+        this.accountsClient = accountsClient;
     }
 
     public void executeCash(UUID idempotencyKey, CashRequest request) {
@@ -49,32 +52,35 @@ public class CashService {
             }
         }
 
-        saveKeyStatus(idempotencyKey, "STARTED");
+        transactionTemplate.executeWithoutResult(tx ->
+                saveKeyStatus(idempotencyKey, "STARTED"));
 
         try {
             AccountOperationDto operationDto = new AccountOperationDto(
                     request.username(), request.amount(), request.action()
             );
 
-            internalServicesWebClient.post()
-                    .uri(accountsServiceUrl + "/accounts/execute-cash")
-                    .bodyValue(operationDto)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+            accountsClient.executeCash(idempotencyKey, operationDto);
 
-            saveSuccessStateAndOutbox(idempotencyKey, request);
+            transactionTemplate.executeWithoutResult(tx -> {
+                try {
+                    saveSuccessStateAndOutbox(idempotencyKey, request);
+                } catch (JsonProcessingException e) {
+                    throw new RuntimeException("Ошибка записи Outbox: " + e.getMessage());
+                }
+            });
 
         } catch (WebClientResponseException.BadRequest e) {
-            saveKeyStatus(idempotencyKey, "REJECTED");
+            transactionTemplate.executeWithoutResult(tx ->
+                    saveKeyStatus(idempotencyKey, "REJECTED"));
             throw new IllegalArgumentException("Ошибка операции: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            saveKeyStatus(idempotencyKey, "REJECTED");
+            transactionTemplate.executeWithoutResult(tx ->
+                    saveKeyStatus(idempotencyKey, "STARTED"));
             throw new RuntimeException("Системный сбой при обналичивании: " + e.getMessage());
         }
     }
 
-    @Transactional
     public void saveKeyStatus(UUID id, String status) {
         IdempotencyKey key = idempotencyRepository.findById(id).orElse(new IdempotencyKey());
         key.setId(id);
@@ -82,8 +88,7 @@ public class CashService {
         idempotencyRepository.save(key);
     }
 
-    @Transactional
-    public void saveSuccessStateAndOutbox(UUID id, CashRequest request) throws Exception {
+    public void saveSuccessStateAndOutbox(UUID id, CashRequest request) throws JsonProcessingException {
         saveKeyStatus(id, "SUCCESS");
 
         CashOutboxMessage outboxMessage = new CashOutboxMessage();

@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import ru.yandex.practicum.mybankfront.client.GatewayClient;
 import ru.yandex.practicum.mybankfront.controller.dto.CashAction;
 import ru.yandex.practicum.mybankfront.dto.AccountResponse;
 import ru.yandex.practicum.mybankfront.dto.CashRequest;
@@ -30,10 +31,10 @@ import java.util.UUID;
 public class MainController {
 
 
-    private final WebClient webClient;
+    private final GatewayClient gatewayClient;
 
-    public MainController(WebClient webClient) {
-        this.webClient = webClient;
+    public MainController(GatewayClient gatewayClient) {
+        this.gatewayClient = gatewayClient;
     }
 
 
@@ -55,12 +56,7 @@ public class MainController {
         model.addAttribute("idempotencyKey", idempotencyKey);
 
         try {
-            AccountResponse accountData = webClient.get()
-                    .uri("/accounts")
-                    .header("Authorization", "Bearer " + userJwtToken)
-                    .retrieve()
-                    .bodyToMono(AccountResponse.class)
-                    .block();
+            AccountResponse accountData = gatewayClient.getAccountData("/accounts", userJwtToken);
 
             if (accountData != null) {
                 model.addAttribute("name", accountData.getName());
@@ -97,6 +93,7 @@ public class MainController {
             @RegisteredOAuth2AuthorizedClient("keycloak") OAuth2AuthorizedClient userClient,
             @RequestParam("name") String name,
             @RequestParam("birthdate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate birthdate,
+            @RequestParam("idempotencyKey") UUID idempotencyKey,
             RedirectAttributes redirectAttributes
     ) {
         String userJwtToken = userClient.getAccessToken().getTokenValue();
@@ -105,13 +102,7 @@ public class MainController {
         try {
             UpdateAccountRequest updateRequest = new UpdateAccountRequest(name, birthdate);
 
-            webClient.post()
-                    .uri("/accounts")
-                    .header("Authorization", "Bearer " + userJwtToken)
-                    .bodyValue(updateRequest)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+            gatewayClient.sendPostOperation("/accounts", userJwtToken, idempotencyKey, updateRequest);
 
         } catch (WebClientResponseException e) {
             errorList.add("Не удалось сохранить изменения: " + e.getResponseBodyAsString());
@@ -144,14 +135,7 @@ public class MainController {
         try {
             CashRequest cashBody = new CashRequest(currentUsername, value, action);
 
-            webClient.post()
-                    .uri("/cash")
-                    .header("Authorization", "Bearer " + userJwtToken)
-                    .header("X-Idempotency-Key", idempotencyKey.toString())
-                    .bodyValue(cashBody)
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+            gatewayClient.sendPostOperation("/cash", userJwtToken, idempotencyKey, cashBody);
 
         } catch (WebClientResponseException e) {
             errorList.add(e.getResponseBodyAsString());
@@ -179,14 +163,9 @@ public class MainController {
         String userJwtToken = userClient.getAccessToken().getTokenValue();
 
         try {
-            webClient.post()
-                    .uri("/transfers")
-                    .header("Authorization", "Bearer " + userJwtToken)
-                    .header("X-Idempotency-Key", idempotencyKey.toString())
-                    .bodyValue(new TransferRequest(currentUsername, loginRecipient, value))
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
+
+            gatewayClient.sendPostOperation("/transfers", userJwtToken, idempotencyKey,
+                    new TransferRequest(currentUsername, loginRecipient, value));
 
         } catch (WebClientResponseException e) {
             redirectAttributes.addFlashAttribute("errors", List.of(e.getResponseBodyAsString()));

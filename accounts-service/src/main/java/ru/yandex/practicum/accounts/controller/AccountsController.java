@@ -9,6 +9,7 @@ import ru.yandex.practicum.accounts.entity.BankAccount;
 import ru.yandex.practicum.accounts.service.AccountService;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -48,12 +49,13 @@ public class AccountsController {
     @PostMapping
     public ResponseEntity<AccountResponse> updateAccount(
             @AuthenticationPrincipal Jwt jwt,
+            @RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
             @RequestBody UpdateAccountRequest request
     ) {
 
         String username = jwt.getClaimAsString("preferred_username");
 
-        accountService.updateClientInfo(username, request.name(), request.birthdate());
+        accountService.updateClientInfo(username, request.name(), request.birthdate(), idempotencyKey);
 
         BankAccount updatedAccount = accountService.getAccountByUsername(username);
         List<BankAccount> otherAccounts = accountService.getAllOtherAccounts(username);
@@ -75,16 +77,14 @@ public class AccountsController {
     }
 
     @PostMapping("/execute-transfer")
-    public ResponseEntity<Void> executeTransfer(@RequestBody AccountTransferDto dto) {
-        accountService.executeMoneyMovement(dto.sender(), dto.recipient(), dto.amount());
-
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> executeTransfer(@RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
+                                                @RequestBody AccountTransferDto dto) {
+        return accountService.executeMoneyMovement(dto.sender(), dto.recipient(), dto.amount(), idempotencyKey);
     }
 
     @PostMapping("/execute-cash")
-    public ResponseEntity<Void> executeCash(@RequestBody AccountOperationDto dto) {
-        accountService.executeCashOperation(dto.username(), dto.amount(), dto.action());
-
-        return ResponseEntity.ok().build();
+    public ResponseEntity<Void> executeCash(@RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
+                                            @RequestBody AccountOperationDto dto) {
+        return accountService.executeCashOperation(dto.username(), dto.amount(), dto.action(), idempotencyKey);
     }
 }

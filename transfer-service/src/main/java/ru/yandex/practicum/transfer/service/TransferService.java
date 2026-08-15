@@ -3,16 +3,18 @@ package ru.yandex.practicum.transfer.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import ru.yandex.practicum.transfer.client.AccountsClient;
+import ru.yandex.practicum.transfer.dto.AccountTransferDto;
+import ru.yandex.practicum.transfer.dto.NotificationEventDto;
 import ru.yandex.practicum.transfer.entity.IdempotencyKey;
 import ru.yandex.practicum.transfer.entity.TransferOutboxMessage;
 import ru.yandex.practicum.transfer.repository.IdempotencyRepository;
 import ru.yandex.practicum.transfer.repository.TransferOutboxRepository;
-import ru.yandex.practicum.transfer.dto.AccountTransferDto;
-import ru.yandex.practicum.transfer.dto.NotificationEventDto;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.reactive.function.client.WebClient;
-import org.springframework.web.reactive.function.client.WebClientResponseException;
+
 import java.util.UUID;
 
 @Service
@@ -20,52 +22,54 @@ public class TransferService {
 
     private final IdempotencyRepository idempotencyRepository;
     private final TransferOutboxRepository outboxRepository;
-    private final WebClient internalServicesWebClient;
     private final ObjectMapper objectMapper;
-    private final String accountsServiceUrl;
+    private final TransactionTemplate transactionTemplate;
+    private final AccountsClient accountsClient;
 
     public TransferService(IdempotencyRepository idempotencyRepository,
                            TransferOutboxRepository outboxRepository,
-                           WebClient internalServicesWebClient,
                            ObjectMapper objectMapper,
-                           @Value("${app.services.accounts-url}") String accountsServiceUrl) {
+                           TransactionTemplate transactionTemplate, AccountsClient accountsClient) {
         this.idempotencyRepository = idempotencyRepository;
         this.outboxRepository = outboxRepository;
-        this.internalServicesWebClient = internalServicesWebClient;
         this.objectMapper = objectMapper;
-        this.accountsServiceUrl = accountsServiceUrl;
+        this.transactionTemplate = transactionTemplate;
+        this.accountsClient = accountsClient;
     }
 
 
     public void executeTransfer(UUID idempotencyKey, String sender, String recipient, int amount) {
 
-        String currentStatus = checkAndStartIdempotencyKey(idempotencyKey);
+        String currentStatus = transactionTemplate.execute(
+                tx -> checkAndStartIdempotencyKey(idempotencyKey)
+        );
         if ("SUCCESS".equals(currentStatus)) return;
         if ("REJECTED".equals(currentStatus)) {
             throw new IllegalArgumentException("Этот перевод уже был отклонен банком");
         }
 
         try {
-            internalServicesWebClient.post()
-                    .uri(accountsServiceUrl + "/accounts/execute-transfer")
-                    .bodyValue(new AccountTransferDto(sender, recipient, amount))
-                    .retrieve()
-                    .toBodilessEntity()
-                    .block();
 
-            saveSuccessStateAndOutbox(idempotencyKey, recipient, sender, amount);
+            AccountTransferDto accountTransferDto = new AccountTransferDto(sender, recipient, amount);
+
+            accountsClient.executeTransfer(idempotencyKey, accountTransferDto);
+
+            transactionTemplate.executeWithoutResult(tx ->
+                    saveSuccessStateAndOutbox(idempotencyKey, recipient, sender, amount)
+            );
 
         } catch (WebClientResponseException.BadRequest e) {
-            updateKeyStatus(idempotencyKey, "REJECTED");
+            transactionTemplate.executeWithoutResult(tx ->
+                    updateKeyStatus(idempotencyKey, "REJECTED"));
             throw new IllegalArgumentException("Ошибка перевода: " + e.getResponseBodyAsString());
         } catch (Exception e) {
-            updateKeyStatus(idempotencyKey, "REJECTED");
+            transactionTemplate.executeWithoutResult(tx ->
+                    updateKeyStatus(idempotencyKey, "STARTED"));
             throw new RuntimeException("Системный сбой при переводе: " + e.getMessage());
         }
     }
 
 
-    @Transactional
     public String checkAndStartIdempotencyKey(UUID id) {
         var keyOpt = idempotencyRepository.findById(id);
         if (keyOpt.isPresent()) {
@@ -82,7 +86,6 @@ public class TransferService {
         return "STARTED";
     }
 
-    @Transactional
     public void updateKeyStatus(UUID id, String status) {
         idempotencyRepository.findById(id).ifPresent(key -> {
             key.setStatus(status);
@@ -90,7 +93,6 @@ public class TransferService {
         });
     }
 
-    @Transactional
     public void saveSuccessStateAndOutbox(UUID id, String recipient, String sender, int amount) {
         try {
             idempotencyRepository.findById(id).ifPresent(key -> {

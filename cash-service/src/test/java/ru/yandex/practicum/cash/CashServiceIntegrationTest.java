@@ -5,8 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import ru.yandex.practicum.cash.client.AccountsClient;
 import ru.yandex.practicum.cash.dto.CashAction;
 import ru.yandex.practicum.cash.dto.CashRequest;
 import ru.yandex.practicum.cash.repository.CashOutboxRepository;
@@ -28,27 +27,15 @@ class CashServiceIntegrationTest extends BaseIntegrationTest {
     @Autowired
     private CashOutboxRepository outboxRepository;
 
-    @MockBean(name = "internalServicesWebClient")
-    private WebClient internalServicesWebClient;
+    @MockBean
+    private AccountsClient accountsClient;
 
     @BeforeEach
     void setUp() {
         idempotencyRepository.deleteAll();
         outboxRepository.deleteAll();
 
-        WebClient.RequestBodyUriSpec requestBodyUriSpec = Mockito.mock(WebClient.RequestBodyUriSpec.class);
-        WebClient.RequestBodySpec requestBodySpec = Mockito.mock(WebClient.RequestBodySpec.class);
-        WebClient.RequestHeadersSpec requestHeadersSpec = Mockito.mock(WebClient.RequestHeadersSpec.class); // 🌟 ДОБАВЛЕНО
-        WebClient.ResponseSpec responseSpec = Mockito.mock(WebClient.ResponseSpec.class);
-
-        Mockito.when(internalServicesWebClient.post()).thenReturn(requestBodyUriSpec);
-        Mockito.when(requestBodyUriSpec.uri(Mockito.anyString())).thenReturn(requestBodySpec);
-
-        Mockito.when(requestBodySpec.bodyValue(Mockito.any())).thenReturn(requestHeadersSpec);
-
-        Mockito.when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-
-        Mockito.when(responseSpec.toBodilessEntity()).thenReturn(Mono.empty());
+        Mockito.doNothing().when(accountsClient).executeCash(Mockito.any(), Mockito.any());
     }
 
     @Test

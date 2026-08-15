@@ -51,6 +51,7 @@ class AccountsControllerIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(MockMvcRequestBuilders.post("/accounts/execute-cash")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequestBody)
+                        .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                         .with(SecurityMockMvcRequestPostProcessors.jwt()
                                 .authorities(new SimpleGrantedAuthority("ROLE_BALANCE_MODIFIER"))))
                 .andExpect(MockMvcResultMatchers.status().isOk());
@@ -72,6 +73,7 @@ class AccountsControllerIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(MockMvcRequestBuilders.post("/accounts/execute-cash")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequestBody)
+                        .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                         .with(SecurityMockMvcRequestPostProcessors.jwt()
                                 .authorities(new SimpleGrantedAuthority("ROLE_BALANCE_MODIFIER"))))
                 .andExpect(MockMvcResultMatchers.status().isBadRequest());
@@ -93,6 +95,7 @@ class AccountsControllerIntegrationTest extends BaseIntegrationTest {
         mockMvc.perform(MockMvcRequestBuilders.post("/accounts/execute-cash")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonRequestBody)
+                        .header("X-Idempotency-Key", java.util.UUID.randomUUID().toString())
                         .with(SecurityMockMvcRequestPostProcessors.jwt()
                                 .authorities(new SimpleGrantedAuthority("ROLE_USER"))))
                 .andExpect(MockMvcResultMatchers.status().isForbidden());

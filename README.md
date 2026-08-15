@@ -26,7 +26,12 @@ spring.sql.init.mode=always
 spring.security.oauth2.client.registration.notification-client.provider=keycloak
 spring.security.oauth2.client.registration.notification-client.authorization-grant-type=client_credentials
 spring.security.oauth2.client.registration.notification-client.client-id=accounts-service-client
-spring.security.oauth2.client.registration.notification-client.client-secret=NzQhQZt7JnPubsovCoVUbpIARuqgVIET
+spring.security.oauth2.client.registration.notification-client.client-secret=секрет
+#spring.security.oauth2.client.provider.keycloak.issuer-uri=http://${KEYCLOAK_HOST:localhost}:8080/realms/bank-realm
+
+#spring.security.oauth2.resourceserver.jwt.issuer-uri=http://${KEYCLOAK_HOST:localhost}:8080/realms/bank-realm
+#spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://${KEYCLOAK_HOST:localhost}:8080/realms/bank-realm/protocol/openid-connect/certs
+
 
 spring.security.oauth2.client.provider.keycloak.issuer-uri=http://bank-keycloak:8080/realms/bank-realm
 
@@ -34,6 +39,13 @@ spring.security.oauth2.resourceserver.jwt.issuer-uri=http://bank-keycloak:8080/r
 spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 app.services.notification-url=http://notification-service
+
+resilience4j.circuitbreaker.instances.notifications.sliding-window-size=5
+resilience4j.circuitbreaker.instances.notifications.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.notifications.wait-duration-in-open-state=10s
+
+resilience4j.circuitbreaker.instances.notifications.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
 ```
 config/application/data:
 
@@ -93,7 +105,7 @@ spring.security.oauth2.resourceserver.jwt.issuer-uri=http://bank-keycloak:8080/r
 spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
 
 spring.security.oauth2.client.registration.cash-client.client-id=cash-service-client
-spring.security.oauth2.client.registration.cash-client.client-secret=iwrF4t35VCH5NeGz9U8N23GSdYqcWHSk
+spring.security.oauth2.client.registration.cash-client.client-secret=секрет
 spring.security.oauth2.client.registration.cash-client.client-authentication-method=client_secret_post
 spring.security.oauth2.client.registration.cash-client.authorization-grant-type=client_credentials
 spring.security.oauth2.client.registration.cash-client.provider=keycloak
@@ -102,6 +114,25 @@ spring.security.oauth2.client.provider.keycloak.issuer-uri=http://bank-keycloak:
 
 app.services.accounts-url=http://account-service
 app.services.notification-url=http://notification-service
+
+resilience4j.retry.instances.accounts.max-attempts=3
+resilience4j.retry.instances.accounts.wait-duration=1s
+
+resilience4j.retry.instances.accounts.retry-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadGateway,org.springframework.web.reactive.function.client.WebClientResponseException$ServiceUnavailable,org.springframework.web.reactive.function.client.WebClientResponseException$GatewayTimeout,io.netty.handler.timeout.ReadTimeoutException,java.net.ConnectException
+
+resilience4j.retry.instances.accounts.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
+resilience4j.circuitbreaker.instances.accounts.sliding-window-size=5
+resilience4j.circuitbreaker.instances.accounts.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.accounts.wait-duration-in-open-state=10s
+
+resilience4j.circuitbreaker.instances.accounts.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
+resilience4j.circuitbreaker.instances.notifications.sliding-window-size=5
+resilience4j.circuitbreaker.instances.notifications.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.notifications.wait-duration-in-open-state=10s
+
+resilience4j.circuitbreaker.instances.notifications.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
 ```
 
 config/my-bank-front-app/data:
@@ -110,7 +141,7 @@ config/my-bank-front-app/data:
 server.port=8084
 
 spring.security.oauth2.client.registration.keycloak.client-id=bank-ui
-spring.security.oauth2.client.registration.keycloak.client-secret=B8qFblHYQ20liM4QdS4getoKctNoj9tU
+spring.security.oauth2.client.registration.keycloak.client-secret=секрет
 spring.security.oauth2.client.registration.keycloak.authorization-grant-type=authorization_code
 spring.security.oauth2.client.registration.keycloak.scope=openid,profile
 spring.security.oauth2.client.registration.keycloak.redirect-uri={baseUrl}/login/oauth2/code/{registrationId}
@@ -125,6 +156,17 @@ spring.security.oauth2.client.provider.keycloak.jwk-set-uri=http://bank-keycloak
 app.gateway.host=${GATEWAY_HOST:localhost}
 
 app.services.gateway-url=http://${app.gateway.host}:8085
+
+resilience4j.retry.instances.gateway.max-attempts=3
+resilience4j.retry.instances.gateway.wait-duration=1s
+
+resilience4j.retry.instances.gateway.retry-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadGateway,org.springframework.web.reactive.function.client.WebClientResponseException$ServiceUnavailable,org.springframework.web.reactive.function.client.WebClientResponseException$GatewayTimeout,java.net.ConnectException
+resilience4j.retry.instances.gateway.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
+resilience4j.circuitbreaker.instances.gateway.sliding-window-size=5
+resilience4j.circuitbreaker.instances.gateway.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.gateway.wait-duration-in-open-state=10s
+resilience4j.circuitbreaker.instances.gateway.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
 
 ```
 
@@ -149,11 +191,12 @@ spring.datasource.driver-class-name=org.postgresql.Driver
 spring.jpa.hibernate.ddl-auto=validate
 
 spring.security.oauth2.client.registration.transfer-client.client-id=transfer-service-client
-spring.security.oauth2.client.registration.transfer-client.client-secret=40MRsM2jMbHsOuA3QRsBZrTZZMtpOtuP
+spring.security.oauth2.client.registration.transfer-client.client-secret=секрет
 spring.security.oauth2.client.registration.transfer-client.client-authentication-method=client_secret_post
 spring.security.oauth2.client.registration.transfer-client.authorization-grant-type=client_credentials
 
 spring.security.oauth2.client.registration.transfer-client.provider=keycloak
+#spring.security.oauth2.client.provider.keycloak.issuer-uri=http://${KEYCLOAK_HOST:localhost}:8080/realms/bank-realm
 
 spring.security.oauth2.client.provider.keycloak.issuer-uri=http://bank-keycloak:8080/realms/bank-realm
 
@@ -164,6 +207,22 @@ spring.security.oauth2.resourceserver.jwt.jwk-set-uri=http://bank-keycloak:8080/
 
 app.services.accounts-url=http://account-service
 app.services.notification-url=http://notification-service
+
+resilience4j.retry.instances.accounts.max-attempts=3
+resilience4j.retry.instances.accounts.wait-duration=1s
+resilience4j.retry.instances.accounts.retry-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadGateway,org.springframework.web.reactive.function.client.WebClientResponseException$ServiceUnavailable,org.springframework.web.reactive.function.client.WebClientResponseException$GatewayTimeout,io.netty.handler.timeout.ReadTimeoutException,java.net.ConnectException
+resilience4j.retry.instances.accounts.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
+resilience4j.circuitbreaker.instances.accounts.sliding-window-size=5
+resilience4j.circuitbreaker.instances.accounts.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.accounts.wait-duration-in-open-state=10s
+resilience4j.circuitbreaker.instances.accounts.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
+resilience4j.circuitbreaker.instances.notifications.sliding-window-size=5
+resilience4j.circuitbreaker.instances.notifications.failure-rate-threshold=50
+resilience4j.circuitbreaker.instances.notifications.wait-duration-in-open-state=10s
+resilience4j.circuitbreaker.instances.notifications.ignore-exceptions=org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest
+
 ```
 
 - настройте Keycloak:

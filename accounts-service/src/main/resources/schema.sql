@@ -17,4 +17,9 @@ CREATE TABLE IF NOT EXISTS outbox_messages (
     status VARCHAR(50) NOT NULL DEFAULT 'PENDING'
 );
 
+CREATE TABLE IF NOT EXISTS account_idempotency (
+    id UUID PRIMARY KEY,
+    status VARCHAR(50) NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_outbox_status_created ON outbox_messages(status, created_at);
