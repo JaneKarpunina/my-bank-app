@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front
+  labels:
+    app: front
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: front
+  template:
+    metadata:
+      labels:
+        app: front
+    spec:
+      containers:
+        - name: front
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8080 # Внутренний порт Java-приложения фронта
+              name: http
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "{{ .Values.global.springProfile }}"
+            # Переопределяем ссылки на внутренние K8s-сервисы
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+              value: "{{ .Values.global.keycloak.url }}/realms/{{ .Values.global.keycloak.realm }}"
+            - name: APP_SERVICES_GATEWAY_URL
+              value: "http://gateway:8085"

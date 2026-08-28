@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bank-postgres
+  labels:
+    app: bank-postgres
+spec:
+  serviceName: "bank-postgres"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: bank-postgres
+  template:
+    metadata:
+      labels:
+        app: bank-postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:15-alpine
+          ports:
+            - containerPort: 5432
+              name: postgres
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_MULTIPLE_DATABASES
+              value: "account_db,cash_db,transfer_db,keycloak_db"
+          volumeMounts:
+            - name: pg-data
+              mountPath: /var/lib/postgresql/data
+            - name: init-script-volume
+              mountPath: /docker-entrypoint-initdb.d
+
+      volumes:
+        - name: init-script-volume
+          configMap:
+            name: postgres-init-script
+            defaultMode: 0755
+
+  volumeClaimTemplates:
+    - metadata:
+        name: pg-data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi

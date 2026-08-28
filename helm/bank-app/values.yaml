@@ -1,0 +1,49 @@
+global:
+  springProfile: "prod"
+  keycloak:
+    url: "http://keycloak:8080"
+    realm: "bank-realm"
+
+accounts:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/accounts-service", tag: "latest" }
+
+cash:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/cash-service", tag: "latest" }
+
+transfer:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/transfer-service", tag: "latest" }
+
+notification:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/notification-service", tag: "latest" }
+
+gateway:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/bank-gateway", tag: "latest" }
+
+front:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "my-registry/my-bank-front-app", tag: "latest" }
+  service:
+    type: NodePort
+    nodePort: 30080
+
+keycloak:
+  enabled: true
+  replicaCount: 1
+  image: { repository: "keycloak/keycloak", tag: "24.0" }
+  service:
+    type: NodePort
+    nodePort: 30085
+
+postgres:
+  enabled: true
