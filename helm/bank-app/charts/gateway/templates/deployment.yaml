@@ -1,78 +1,72 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "gateway.fullname" . }}
+  name: gateway
   labels:
-    {{- include "gateway.labels" . | nindent 4 }}
+    app: gateway
 spec:
-  {{- if not .Values.autoscaling.enabled }}
-  replicas: {{ .Values.replicaCount }}
-  {{- end }}
+  replicas: {{ .Values.replicaCount | default 1 }}
   selector:
     matchLabels:
-      {{- include "gateway.selectorLabels" . | nindent 6 }}
+      app: gateway
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       labels:
-        {{- include "gateway.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
+        app: gateway
     spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "gateway.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
-      securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
       containers:
-        - name: {{ .Chart.Name }}
-          {{- with .Values.securityContext }}
-          securityContext:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+        - name: gateway
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
-          {{- with .Values.livenessProbe }}
-          livenessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.readinessProbe }}
-          readinessProbe:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-          {{- with .Values.volumeMounts }}
-          volumeMounts:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-      {{- with .Values.volumes }}
-      volumes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+            - containerPort: 8085
+              name: http
+          env:
+            - name: SPRING_CLOUD_CONSUL_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
+              value: "false"
+
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              value: "http://keycloak:8080/realms/bank-realm"
+
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_0_ID
+              value: "account-service"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_0_URI
+              value: "http://accounts:8082" # Перевод на ClusterIP DNS
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0
+              value: "Path=/accounts/**"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_0_FILTERS_0_NAME
+              value: "TokenRelay"
+
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_ID
+              value: "transfer-service"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_URI
+              value: "http://transfer:8083"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0
+              value: "Path=/transfers"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_1
+              value: "Path=/transfers/**"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_FILTERS_0_NAME
+              value: "TokenRelay"
+
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_ID
+              value: "cash-service"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_URI
+              value: "http://cash:8083" # Замените на реальный порт вашей кассы (например, 8083 или 8084)
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0
+              value: "Path=/cash"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_1
+              value: "Path=/cash/**"
+            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_FILTERS_0_NAME
+              value: "TokenRelay"
+
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "*"
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
+              value: "TRACE"
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY
+              value: "DEBUG"
+            - name: LOGGING_LEVEL_WEB
+              value: "DEBUG"

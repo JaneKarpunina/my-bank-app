@@ -1,15 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "transfer.fullname" . }}
-  labels:
-    {{- include "transfer.labels" . | nindent 4 }}
+  name: transfer
 spec:
-  type: {{ .Values.service.type }}
+  type: ClusterIP
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
+    - port: 8083
+      targetPort: 8083
       protocol: TCP
       name: http
   selector:
-    {{- include "transfer.selectorLabels" . | nindent 4 }}
+    app: transfer
