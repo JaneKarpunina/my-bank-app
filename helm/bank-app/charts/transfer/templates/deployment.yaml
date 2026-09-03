@@ -14,14 +14,25 @@ spec:
       labels:
         app: transfer
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z bank-postgres 5432; do echo waiting for postgres; sleep 3; done;' ]
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z keycloak 8080; do echo waiting for keycloak; sleep 3; done;' ]
       containers:
         - name: transfer
           image: "my-registry/transfer-service:latest"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--spring.security.oauth2.client.registration.transfer-client.provider=keycloak"
           ports:
-            - containerPort: 8083
+            - containerPort: 8080
               name: http
           env:
-            # 1. Отключаем Consul полностью
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
             - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
               value: "false"
             - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
@@ -50,7 +61,10 @@ spec:
               value: "client_credentials"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_PROVIDER
               value: "keycloak"
-
+            - name: SPRING_CLOUD_LOADBALANCER_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
               value: "http://keycloak:8080/realms/bank-realm"
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
@@ -84,3 +98,7 @@ spec:
                 configMapKeyRef:
                   name: bank-global-config
                   key: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB
+              value: "DEBUG"
+            - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL
+              value: "DEBUG"

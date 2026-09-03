@@ -14,13 +14,25 @@ spec:
       labels:
         app: accounts
     spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z bank-postgres 5432; do echo waiting for postgres; sleep 3; done;' ]
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z keycloak 8080; do echo waiting for keycloak; sleep 3; done;' ]
       containers:
         - name: accounts
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--spring.security.oauth2.client.registration.notification-client.provider=keycloak"
           ports:
-            - containerPort: 8082
+            - containerPort: 8080
               name: http
           env:
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
             - name: SPRING_CLOUD_CONSUL_ENABLED
               value: "false"
             - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
@@ -40,14 +52,17 @@ spec:
             - name: SPRING_DATASOURCE_DRIVER_CLASS_NAME
               value: "org.postgresql.Driver"
             - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-              value: "none" # Как в вашем файле properties
+              value: "none"
             - name: SPRING_JPA_SHOW_SQL
               value: "true"
             - name: SPRING_JPA_PROPERTIES_HIBERNATE_FORMAT_SQL
               value: "true"
             - name: SPRING_SQL_INIT_MODE
               value: "always"
-
+            - name: SPRING_CLOUD_LOADBALANCER_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_PROVIDER
               value: "keycloak"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_AUTHORIZATION_GRANT_TYPE
@@ -68,7 +83,7 @@ spec:
               value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
 
             - name: APP_SERVICES_NOTIFICATION_URL
-              value: "http://notification:8081"
+              value: "http://notification:8086"
 
             - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
               value: "5"

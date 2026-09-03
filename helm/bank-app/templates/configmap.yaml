@@ -6,7 +6,7 @@ data:
   KEYCLOAK_URL: "http://keycloak:8080"
   KEYCLOAK_REALM: "bank-realm"
   ACCOUNTS_URL: "http://accounts:8082"
-  NOTIFICATION_URL: "http://notification:8081"
+  NOTIFICATION_URL: "http://notification:8086"
   TRANSFER_URL: "http://transfer:8086"
   CASH_URL: "http://cash:8083"
 

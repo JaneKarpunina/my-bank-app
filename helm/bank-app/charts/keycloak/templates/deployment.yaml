@@ -2,10 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keycloak
-  labels:
-    app: keycloak
 spec:
-  replicas: {{ .Values.replicaCount | default 1 }}
+  replicas: 1
   selector:
     matchLabels:
       app: keycloak
@@ -16,13 +14,41 @@ spec:
     spec:
       containers:
         - name: keycloak
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          args: ["start-dev"]
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "24.0" }}"
+          args: ["start-dev", "--import-realm"]
+          ports:
+            - containerPort: 8080
+              name: http
           env:
             - name: KEYCLOAK_ADMIN
               value: "admin"
             - name: KEYCLOAK_ADMIN_PASSWORD
               value: "admin"
-          ports:
-            - containerPort: 8080
-              name: http
+
+            - name: FRONT_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: FRONT_KEYCLOAK_CLIENT_SECRET
+            - name: CASH_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: CASH_KEYCLOAK_CLIENT_SECRET
+            - name: TRANSFER_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: TRANSFER_CLIENT_SECRET
+            - name: ACCOUNTS_NOTIFICATION_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: ACCOUNTS_NOTIFICATION_CLIENT_SECRET
+          volumeMounts:
+            - name: realm-config-volume
+              mountPath: /opt/keycloak/data/import
+      volumes:
+        - name: realm-config-volume
+          configMap:
+            name: keycloak-realm-config

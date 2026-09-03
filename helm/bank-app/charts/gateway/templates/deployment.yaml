@@ -17,10 +17,13 @@ spec:
       containers:
         - name: gateway
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8085
+            - containerPort: 8080
               name: http
           env:
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
             - name: SPRING_CLOUD_CONSUL_ENABLED
               value: "false"
             - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
@@ -45,20 +48,16 @@ spec:
             - name: SPRING_CLOUD_GATEWAY_ROUTES_1_URI
               value: "http://transfer:8083"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0
-              value: "Path=/transfers"
-            - name: SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_1
-              value: "Path=/transfers/**"
+              value: "Path=/transfers,/transfers/**"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_1_FILTERS_0_NAME
               value: "TokenRelay"
 
             - name: SPRING_CLOUD_GATEWAY_ROUTES_2_ID
               value: "cash-service"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_2_URI
-              value: "http://cash:8083" # Замените на реальный порт вашей кассы (например, 8083 или 8084)
+              value: "http://cash:8087"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0
-              value: "Path=/cash"
-            - name: SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_1
-              value: "Path=/cash/**"
+              value: "Path=/cash,/cash/**"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_2_FILTERS_0_NAME
               value: "TokenRelay"
 

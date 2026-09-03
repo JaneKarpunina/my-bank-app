@@ -1,0 +1,88 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: keycloak-realm-config
+  labels:
+    app: keycloak
+data:
+  bank-realm.json: |
+    {
+      "realm": "bank-realm",
+      "enabled": true,
+      "roles": {
+        "realm": [
+          { "name": "ROLE_BALANCE_MODIFIER", "description": "Право изменять баланс" },
+          { "name": "ROLE_NOTIFICATION", "description": "Право на отправку уведомлений" }
+        ]
+      },
+      "clients": [
+        {
+          "clientId": "bank-ui",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${FRONT_KEYCLOAK_CLIENT_SECRET}",
+          "redirectUris": ["http://localhost:8084/*", "http://localhost:9090/*"],
+          "webOrigins": ["http://localhost:8084", "http://localhost:9090", "*"],
+          "publicClient": false,
+          "protocol": "openid-connect"
+        },
+        {
+          "clientId": "cash-service-client",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${CASH_KEYCLOAK_CLIENT_SECRET}",
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect"
+        },
+        {
+          "clientId": "transfer-service-client",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${TRANSFER_CLIENT_SECRET}",
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect"
+        },
+        {
+          "clientId": "accounts-service-client",
+          "enabled": true,
+          "clientAuthenticatorType": "client-secret",
+          "secret": "${ACCOUNTS_NOTIFICATION_CLIENT_SECRET}",
+          "serviceAccountsEnabled": true,
+          "publicClient": false,
+          "protocol": "openid-connect"
+        }
+      ],
+      "users": [
+        {
+          "username": "ivanov",
+          "enabled": true,
+          "email": "ivanov@bank.ru",
+          "firstName": "Сергей",
+          "lastName": "Иванов",
+          "credentials": [
+            { "type": "password", "value": "password", "temporary": false }
+          ],
+          "realmRoles": ["ROLE_BALANCE_MODIFIER"]
+        },
+        {
+          "username": "service-account-transfer-service-client",
+          "enabled": true,
+          "serviceAccountClientId": "transfer-service-client",
+          "realmRoles": ["ROLE_BALANCE_MODIFIER", "ROLE_NOTIFICATION"]
+        },
+        {
+          "username": "service-account-cash-service-client",
+          "enabled": true,
+          "serviceAccountClientId": "cash-service-client",
+          "realmRoles": ["ROLE_BALANCE_MODIFIER", "ROLE_NOTIFICATION"]
+        },
+        {
+          "username": "service-account-accounts-service-client",
+          "enabled": true,
+          "serviceAccountClientId": "accounts-service-client",
+          "realmRoles": ["ROLE_NOTIFICATION"]
+        }
+      ]
+    }
