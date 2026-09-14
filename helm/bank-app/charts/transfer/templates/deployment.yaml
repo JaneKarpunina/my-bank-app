@@ -102,3 +102,5 @@ spec:
               value: "DEBUG"
             - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL
               value: "DEBUG"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "kafka:9092"

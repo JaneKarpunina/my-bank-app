@@ -45,5 +45,20 @@ keycloak:
     type: NodePort
     nodePort: 30085
 
+kafka:
+  kraft:
+    enabled: true
+  replicaCount: 3
+  persistence:
+    enabled: true
+    size: 8Gi
+  provisioning:
+    enabled: true
+    topics:
+      - name: "bank-notifications"
+        partitions: 3
+        replicationFactor: 2
+
+
 postgres:
   enabled: true
