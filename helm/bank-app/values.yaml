@@ -3,6 +3,7 @@ global:
   keycloak:
     url: "http://keycloak:8080"
     realm: "bank-realm"
+  notificationTopic: "bank-notifications"
 
 accounts:
   enabled: true
@@ -55,7 +56,7 @@ kafka:
   provisioning:
     enabled: true
     topics:
-      - name: "bank-notifications"
+      - name: "{{ .Values.global.notificationTopic }}"
         partitions: 3
         replicationFactor: 2
 
