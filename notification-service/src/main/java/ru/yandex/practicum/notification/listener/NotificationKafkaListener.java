@@ -33,21 +33,29 @@ public class NotificationKafkaListener {
 
     @KafkaListener(
             topics = "${app.kafka.topics.notification:bank-notifications}",
-            groupId = "notification-group",
+            groupId = "notification-group-v3",
             containerFactory = "kafkaListenerContainerFactory"
     )
     public void handleEvent(String messageJson) {
 
         try {
+            System.out.println("Получена сырая JSON-строка из Kafka: " + messageJson);
             EventEnvelope envelope = objectMapper.readValue(messageJson, EventEnvelope.class);
+
+            System.out.println("Успешно десериализовано событие типа: " + envelope.eventType());
 
             EventHandler handler = handlerMap.get(envelope.eventType());
 
             if (handler != null) {
                 handler.handle(envelope);
+                System.out.println("Хэндлер успешно завершил работу");
+            }
+            else {
+                System.out.println("Хэндлер для типа [" + envelope.eventType() + "] не найден!");
             }
 
         } catch (Exception e) {
+            System.err.println("КРИТИЧЕСКАЯ ОШИБКА ОБРАБОТКИ В KAFKA LISTENER: " + e.getMessage());
             throw new RuntimeException("Ошибка обработки события Kafka, откат оффсета", e);
         }
     }

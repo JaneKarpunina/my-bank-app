@@ -24,6 +24,8 @@ spec:
               value: "admin"
             - name: KEYCLOAK_ADMIN_PASSWORD
               value: "admin"
+            - name: JAVA_OPTS_APPEND
+              value: "-Xms128m -Xmx450m -XX:MaxMetaspaceSize=150m"
 
             - name: FRONT_KEYCLOAK_CLIENT_SECRET
               valueFrom:
@@ -48,6 +50,10 @@ spec:
           volumeMounts:
             - name: realm-config-volume
               mountPath: /opt/keycloak/data/import
+          resources:
+            requests:
+              memory: "768Mi"
+              cpu: "500m"
       volumes:
         - name: realm-config-volume
           configMap:

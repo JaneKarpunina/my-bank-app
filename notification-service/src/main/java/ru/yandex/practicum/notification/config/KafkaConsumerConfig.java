@@ -25,7 +25,7 @@ public class KafkaConsumerConfig {
     public ConsumerFactory<String, String> consumerFactory() {
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
-        props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-group");
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "notification-group-v3");
         props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
 
@@ -42,6 +42,8 @@ public class KafkaConsumerConfig {
         factory.setConsumerFactory(consumerFactory());
 
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
+
+        factory.setRecordMessageConverter(null);
 
         return factory;
     }

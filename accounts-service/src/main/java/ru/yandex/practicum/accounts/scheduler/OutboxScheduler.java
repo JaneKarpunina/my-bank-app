@@ -5,7 +5,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.accounts.client.NotificationClient;
 import ru.yandex.practicum.accounts.dto.EventEnvelope;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
 import ru.yandex.practicum.accounts.repository.OutboxRepository;
@@ -19,7 +18,6 @@ public class OutboxScheduler {
 
     private final OutboxRepository outboxRepository;
     private final OutboxStatusService outboxStatusService;
-    private final NotificationClient notificationClient;
 
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
@@ -30,13 +28,11 @@ public class OutboxScheduler {
     public OutboxScheduler(
             OutboxRepository outboxRepository,
             OutboxStatusService outboxStatusService,
-            NotificationClient notificationClient,
             KafkaTemplate<String, String> kafkaTemplate,
             ObjectMapper objectMapper) {
 
         this.outboxRepository = outboxRepository;
         this.outboxStatusService = outboxStatusService;
-        this.notificationClient = notificationClient;
         this.kafkaTemplate = kafkaTemplate;
         this.objectMapper = objectMapper;
     }

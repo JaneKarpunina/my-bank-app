@@ -5,10 +5,10 @@ type: application
 version: 1.0.0
 appVersion: "1.0.0"
 
-dependencies:
-  - name: kafka
-    version: "31.2.0"
-    repository: "oci://registry-1.docker.io/bitnamicharts"
+#dependencies:
+#  - name: kafka
+#    version: "31.2.0"
+#    repository: "oci://registry-1.docker.io/bitnamicharts"
 #
 #dependencies:
 #  - name: accounts
