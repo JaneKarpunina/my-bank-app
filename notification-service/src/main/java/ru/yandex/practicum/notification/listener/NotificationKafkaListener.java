@@ -39,19 +39,12 @@ public class NotificationKafkaListener {
     public void handleEvent(String messageJson) {
 
         try {
-            System.out.println("Получена сырая JSON-строка из Kafka: " + messageJson);
             EventEnvelope envelope = objectMapper.readValue(messageJson, EventEnvelope.class);
-
-            System.out.println("Успешно десериализовано событие типа: " + envelope.eventType());
 
             EventHandler handler = handlerMap.get(envelope.eventType());
 
             if (handler != null) {
                 handler.handle(envelope);
-                System.out.println("Хэндлер успешно завершил работу");
-            }
-            else {
-                System.out.println("Хэндлер для типа [" + envelope.eventType() + "] не найден!");
             }
 
         } catch (Exception e) {

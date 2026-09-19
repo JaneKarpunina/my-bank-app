@@ -4,31 +4,3 @@ description: Umbrella Helm Chart for the Complete Banking System (All in K8s)
 type: application
 version: 1.0.0
 appVersion: "1.0.0"
-
-#dependencies:
-#  - name: kafka
-#    version: "31.2.0"
-#    repository: "oci://registry-1.docker.io/bitnamicharts"
-#
-#dependencies:
-#  - name: accounts
-#    version: 1.0.0
-#    repository: "file://./charts/accounts"
-#  - name: cash
-#    version: 1.0.0
-#    repository: "file://./charts/cash"
-#  - name: transfer
-#    version: 1.0.0
-#    repository: "file://./charts/transfer"
-#  - name: notification
-#    version: 1.0.0
-#    repository: "file://./charts/notification"
-#  - name: gateway
-#    version: 1.0.0
-#    repository: "file://./charts/gateway"
-#  - name: front
-#    version: 1.0.0
-#    repository: "file://./charts/front"
-#  - name: keycloak
-#    version: 1.0.0
-#    repository: "file://./charts/keycloak"
