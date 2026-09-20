@@ -66,20 +66,6 @@ spec:
               value: "false"
             - name: SPRING_CLOUD_DISCOVERY_ENABLED
               value: "false"
-#            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_PROVIDER
-#              value: "keycloak"
-#            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_AUTHORIZATION_GRANT_TYPE
-#              value: "client_credentials"
-#            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_CLIENT_ID
-#              value: "accounts-service-client"
-#            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_NOTIFICATION_CLIENT_CLIENT_SECRET
-#              valueFrom:
-#                secretKeyRef:
-#                  name: bank-global-secrets
-#                  key: ACCOUNTS_NOTIFICATION_CLIENT_SECRET
-#
-#            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
-#              value: "http://keycloak:8080/realms/bank-realm"
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
               value: "http://keycloak:8080/realms/bank-realm"
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
@@ -87,13 +73,6 @@ spec:
 
             - name: APP_SERVICES_NOTIFICATION_URL
               value: "http://notification:8086"
-
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
-#              value: "5"
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_FAILURE_RATE_THRESHOLD
-#              value: "50"
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_WAIT_DURATION_IN_OPEN_STATE
-#              value: "10s"
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION

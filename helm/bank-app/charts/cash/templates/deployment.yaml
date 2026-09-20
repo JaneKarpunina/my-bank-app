@@ -81,8 +81,6 @@ spec:
 
             - name: APP_SERVICES_ACCOUNTS_URL
               value: "http://accounts:8082"
-#            - name: APP_SERVICES_NOTIFICATION_URL
-#              value: "http://notification:8086"
 
             - name: RESILIENCE4J_RETRY_INSTANCES_ACCOUNTS_MAX_ATTEMPTS
               value: "3"
@@ -94,12 +92,6 @@ spec:
               value: "50"
             - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_WAIT_DURATION_IN_OPEN_STATE
               value: "10s"
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
-#              value: "5"
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_FAILURE_RATE_THRESHOLD
-#              value: "50"
-#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_WAIT_DURATION_IN_OPEN_STATE
-#              value: "10s"
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
