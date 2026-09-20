@@ -1,18 +1,13 @@
-# 🏦 Инструкция по локальному развертыванию My Bank App в Kubernetes
+# Инструкция по локальному развертыванию My Bank App в Kubernetes
 
-Проект полностью переведен с инфраструктуры Docker Compose + Consul на Cloud-Native стек **Kubernetes (Minikube)** и **Helm**.
-Все секреты вынесены в `Secret`, несекретные параметры в `ConfigMap`, а базы данных автоматически инициализируются (схемы `JSONB` и стартовые пользователи) при первом старте.
-
----
-
-## 🎛️ Требования к окружению
+## Требования к окружению
 * Установленный **Minikube** (драйвер `docker`)
 * Утилиты **kubectl** и **helm**
 * Запущенный Docker Desktop на Windows
 
 ---
 
-## 🚀 Инструкция по запуску «в одну кнопку»
+## Инструкция по запуску
 
 ### Шаг 1. Локальная компиляция кода
 Перед сборкой Docker-образов скомпилируйте Java-архивы во всех модулях:
@@ -42,19 +37,15 @@ docker build -t my-registry/my-bank-front-app:latest ./my-bank-front-app
 ```
 
 ### Шаг 4. Деплоймент банковской экосистемы через Helm
-Перейдите в папку с зонтичным чартом `cd helm/bank-app/` и запустите автоматическую установку релиза в изолированном пространстве имен `bank`:
-```bash
-# 1. Создаем namespace
-kubectl create namespace bank
+Разверните всю инфраструктуру (Postgres, Keycloak, раздельную Кафку 2/2) и бэкенд одной командой из корня проекта:
 
-# 2. Накатываем инфраструктуру
-helm install my-bank-release . -n bank
+```powershell
+helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespace
 ```
-*Благодаря настроенным Init-контейнерам, Kubernetes сам выстроит правильную очередь: сначала поднимутся PostgreSQL и Keycloak с автоимпортом реалма, а бэкенды и фронтенд будут терпеливо ждать их готовности, исключая ошибки BeanInstantiationException.*
 
 ---
 
-## 🌐 Сетевой доступ и проверка работоспособности
+## Сетевой доступ и проверка работоспособности
 
 ### 1. Регистрация DNS-хоста Keycloak в Windows
 Для работы редиректов OAuth 2.0 добавьте одну строчку в системный файл `C:\Windows\System32\drivers\etc\hosts` (от имени Администратора):
@@ -80,13 +71,8 @@ kubectl port-forward deployment/keycloak 8080:8080 -n bank
 * **Логин:** `ivanov`
 * **Пароль:** `password`
 
-После успешного входа перед вами откроется личный кабинет пользователя **Сергея Иванова** со стартовым балансом **8900 рублей**, полученным из PostgreSQL. Операции переводов и кассы полностью доступны.
-
 ---
 
-## 🛠️ Полезные команды для демонстрации (DevOps Cheat Sheet)
+## Тестирование
 
-* **Проверить статус всех компонентов:** `kubectl get pods -n bank`
-* **Посмотреть логи любого микросервиса:** `kubectl logs deployment/accounts -n bank --tail=50`
-* **Проверить наполнение БД внутри K8s:** `kubectl exec -it bank-postgres-0 -n bank -- psql -U postgres -d account_db -c "SELECT * FROM bank_accounts;"`
-* **Полное удаление релиза и очистка кластера:** `helm uninstall my-bank-release -n bank && kubectl delete pvc --all -n bank`
+Для запуска тестов из корня проекта выполните команду mvn test
