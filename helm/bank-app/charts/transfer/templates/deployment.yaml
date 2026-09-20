@@ -96,11 +96,11 @@ spec:
                 configMapKeyRef:
                   name: bank-global-config
                   key: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_SLIDING_WINDOW_SIZE
-            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
-              valueFrom:
-                configMapKeyRef:
-                  name: bank-global-config
-                  key: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
+#            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
+#              valueFrom:
+#                configMapKeyRef:
+#                  name: bank-global-config
+#                  key: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_NOTIFICATIONS_SLIDING_WINDOW_SIZE
             - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB
               value: "DEBUG"
             - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL

@@ -35,10 +35,10 @@ spec:
             - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
               value: "false"
 
-            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-              value: "http://keycloak:8080/realms/bank-realm"
-            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+#            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+#              value: "http://keycloak:8080/realms/bank-realm"
+#            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+#              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
             - name: "spring.kafka.bootstrap-servers"
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
