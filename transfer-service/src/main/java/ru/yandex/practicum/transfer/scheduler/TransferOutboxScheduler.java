@@ -38,7 +38,7 @@ public class TransferOutboxScheduler {
     @Scheduled(fixedDelay = 5000)
     public void processTransferOutboxMessages() {
 
-        List<TransferOutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+        List<TransferOutboxMessage> pendingMessages = outboxRepository.findMessagesForProcessing();
 
         for (TransferOutboxMessage message : pendingMessages) {
             try {

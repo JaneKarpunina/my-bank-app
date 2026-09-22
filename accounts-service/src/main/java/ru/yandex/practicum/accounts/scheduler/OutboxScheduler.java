@@ -40,7 +40,7 @@ public class OutboxScheduler {
 
     @Scheduled(fixedDelay = 5000)
     public void processOutboxMessages() {
-        List<OutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+        List<OutboxMessage> pendingMessages = outboxRepository.findMessagesForProcessing();
 
         for (OutboxMessage message : pendingMessages) {
             try {

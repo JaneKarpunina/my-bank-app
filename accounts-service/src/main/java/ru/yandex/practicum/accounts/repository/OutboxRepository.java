@@ -1,6 +1,7 @@
 package ru.yandex.practicum.accounts.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
 
@@ -10,8 +11,7 @@ import java.util.UUID;
 @Repository
 public interface OutboxRepository extends JpaRepository<OutboxMessage, UUID> {
 
-    List<OutboxMessage> findByStatusOrderByCreatedAtAsc(String status);
-
-    List<OutboxMessage> findByStatus(String status);
+    @Query("SELECT m FROM OutboxMessage m WHERE m.status = 'PENDING' OR m.status = 'FAILED'")
+    List<OutboxMessage> findMessagesForProcessing();
 }
 

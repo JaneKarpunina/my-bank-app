@@ -37,7 +37,7 @@ public class CashOutboxScheduler {
     @Scheduled(fixedDelay = 5000)
     public void processCashOutboxMessages() {
 
-        List<CashOutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+        List<CashOutboxMessage> pendingMessages = outboxRepository.findMessagesForProcessing();
 
         for (CashOutboxMessage message : pendingMessages) {
             try {

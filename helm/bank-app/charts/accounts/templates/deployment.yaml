@@ -71,8 +71,8 @@ spec:
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
               value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
 
-            - name: APP_SERVICES_NOTIFICATION_URL
-              value: "http://notification:8086"
+#            - name: APP_SERVICES_NOTIFICATION_URL
+#              value: "http://notification:8086"
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
