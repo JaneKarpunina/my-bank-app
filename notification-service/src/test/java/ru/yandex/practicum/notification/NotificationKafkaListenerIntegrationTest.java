@@ -5,7 +5,6 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.SpyBean;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
@@ -23,16 +22,19 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "app.kafka.topics.notification=notification-integration-test-topic"
+})
 @ActiveProfiles("test")
-@EmbeddedKafka(partitions = 1, topics = {"${app.kafka.topics.notification:bank-notifications}"})
+@EmbeddedKafka(
+        partitions = 1,
+        topics = {"notification-integration-test-topic"},
+        controlledShutdown = true
+)
 class NotificationKafkaListenerIntegrationTest {
 
     @Autowired
     private EmbeddedKafkaBroker embeddedKafkaBroker;
-
-    @Value("${app.kafka.topics.notification:bank-notifications}")
-    private String topicName;
 
     @SpyBean
     private TransferCompletedHandler mockHandler;
@@ -47,8 +49,9 @@ class NotificationKafkaListenerIntegrationTest {
         ProducerFactory<String, String> pf = new DefaultKafkaProducerFactory<>(producerProps);
         KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
 
-        String jsonPayload = "{\"id\":\"" + java.util.UUID.randomUUID() + "\",\"eventType\":\"TRANSFER_COMPLETED\",\"aggregateType\":\"TRANSFER\",\"payload\":\"{}\",\"timestamp\":\"2026-09-19T12:00:00Z\"}";
+        String jsonPayload = "{\"eventId\":\"" + java.util.UUID.randomUUID() + "\",\"eventType\":\"TRANSFER_COMPLETED\",\"aggregateType\":\"TRANSFER\",\"payload\":\"{}\",\"timestamp\":\"2026-09-19T12:00:00Z\"}";
 
+        String topicName = "notification-integration-test-topic";
         template.send(topicName, jsonPayload).get();
 
         verify(mockHandler, timeout(5000).atLeastOnce()).handle(any());

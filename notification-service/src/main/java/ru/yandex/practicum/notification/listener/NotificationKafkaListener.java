@@ -2,7 +2,6 @@ package ru.yandex.practicum.notification.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
-import org.springframework.http.ResponseEntity;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import ru.yandex.practicum.notification.dto.EventEnvelope;

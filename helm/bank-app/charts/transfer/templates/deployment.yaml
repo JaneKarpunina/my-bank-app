@@ -33,6 +33,9 @@ spec:
           ports:
             - containerPort: 8080
               name: http
+          envFrom:
+            - configMapRef:
+                name: { { .Release.Name } }-kafka-config
           env:
             - name: SERVER_ADDRESS
               value: "0.0.0.0"
