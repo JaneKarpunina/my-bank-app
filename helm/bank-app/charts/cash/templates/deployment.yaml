@@ -35,7 +35,7 @@ spec:
               name: http
           envFrom:
             - configMapRef:
-                name: { { .Release.Name } }-kafka-config
+                name: {{ .Release.Name }}-kafka-config
           env:
             - name: SERVER_ADDRESS
               value: "0.0.0.0"

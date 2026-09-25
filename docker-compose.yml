@@ -1,4 +1,179 @@
-version: '3.8'
+#version: '3.8'
+#
+#services:
+#  bank-postgres:
+#    image: postgres:15-alpine
+#    container_name: bank-postgres
+#    environment:
+#      POSTGRES_USER: postgres
+#      POSTGRES_PASSWORD: root_password
+#      POSTGRES_DB: keycloak_db
+#    ports:
+#      - "5432:5432"
+#    volumes:
+#      - pgdata:/var/lib/postgresql/data
+#      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
+#    healthcheck:
+#      test: ["CMD-SHELL", "pg_isready -U postgres"]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 5
+#
+#  consul:
+#    image: hashicorp/consul:1.15.4
+#    container_name: bank-consul
+#    command: "agent -server -bootstrap-expect=1 -client=0.0.0.0 -ui"
+#    ports:
+#      - "8500:8500"
+#    environment:
+#      # Настройка, чтобы Consul понимал, где сохранять данные внутри контейнера
+#      CONSUL_BIND_INTERFACE: "eth0"
+#    volumes:
+#      - consul_data:/consul/data
+#    healthcheck:
+#      test: [ "CMD", "consul", "members" ]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 5
+#
+#  bank-keycloak:
+#    image: quay.io/keycloak/keycloak:24.0.5
+#    container_name: bank-keycloak
+#    command: ["start-dev", "--http-port=8080"]
+#    environment:
+#      KEYCLOAK_ADMIN: admin
+#      KEYCLOAK_ADMIN_PASSWORD: admin
+#      KC_DB: postgres
+#      KC_DB_URL: jdbc:postgresql://bank-postgres:5432/keycloak_db
+#      KC_DB_USERNAME: postgres
+#      KC_DB_PASSWORD: root_password
+#      #KC_HOSTNAME_PROVIDER: "request"
+#      KC_HOSTNAME: bank-keycloak
+#      KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
+#    ports:
+#      - "8080:8080"
+#    depends_on:
+#      bank-postgres:
+#        condition: service_healthy
+#
+#    healthcheck:
+#      test: [ "CMD-SHELL", "sh -c 'echo > /dev/tcp/127.0.0.1/8080'" ]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10
+#
+#  # 1. Сервис аккаунтов
+#  accounts-service:
+#    build: ./accounts-service
+#    container_name: bank-accounts
+#    hostname: bank-accounts
+#    ports:
+#      - "8082:8082"
+#    depends_on:
+#      bank-postgres:
+#        condition: service_healthy
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_healthy
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      POSTGRES_HOST: bank-postgres
+#      KEYCLOAK_HOST: bank-keycloak
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#
+#  # 2. API Gateway
+#  bank-gateway:
+#    build: ./bank-gateway
+#    container_name: bank-gateway
+#    hostname: bank-gateway
+#    ports:
+#      - "8085:8085"
+#    depends_on:
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_started
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      KEYCLOAK_HOST: bank-keycloak
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#      SPRING_CLOUD_CONSUL_DISCOVERY_INSTANCE_ID: "bank-gateway"
+#
+#
+#  # 3. Сервис уведомлений
+#  notification-service:
+#    build: ./notification-service
+#    container_name: bank-notification
+#    ports:
+#      - "8086:8086"
+#    depends_on:
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_started
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      KEYCLOAK_HOST: bank-keycloak
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#
+#  # 4. Фронтенд Thymeleaf
+#  my-bank-front-app:
+#    build: ./my-bank-front-app
+#    container_name: bank-frontend
+#    ports:
+#      - "8084:8084"
+#    depends_on:
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_healthy
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      KEYCLOAK_HOST: bank-keycloak
+#      GATEWAY_HOST: bank-gateway
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#
+#  transfer-service:
+#    build: ./transfer-service
+#    container_name: bank-transfers
+#    ports:
+#      - "8083:8083"
+#    depends_on:
+#      bank-postgres:
+#        condition: service_healthy
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_healthy
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      POSTGRES_HOST: bank-postgres
+#      KEYCLOAK_HOST: bank-keycloak
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#
+#  cash-service:
+#    build: ./cash-service
+#    container_name: bank-cash
+#    ports:
+#      - "8087:8087"
+#    depends_on:
+#      bank-postgres:
+#        condition: service_healthy
+#      consul:
+#        condition: service_healthy
+#      bank-keycloak:
+#        condition: service_healthy
+#    environment:
+#      CONSUL_HOST: bank-consul
+#      POSTGRES_HOST: bank-postgres
+#      KEYCLOAK_HOST: bank-keycloak
+#      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#volumes:
+#  pgdata:
+#  consul_data:
+
+#version: '3.8'
 
 services:
   bank-postgres:
@@ -7,34 +182,55 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: root_password
-      POSTGRES_DB: keycloak_db
+      # Создаем базовую системную БД по умолчанию
+      POSTGRES_DB: postgres
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
-      - ./init-multiple-databases.sh:/docker-entrypoint-initdb.d/init-multiple-databases.sh
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
-  consul:
-    image: hashicorp/consul:1.15.4
-    container_name: bank-consul
-    command: "agent -server -bootstrap-expect=1 -client=0.0.0.0 -ui"
-    ports:
-      - "8500:8500"
-    environment:
-      # Настройка, чтобы Consul понимал, где сохранять данные внутри контейнера
-      CONSUL_BIND_INTERFACE: "eth0"
-    volumes:
-      - consul_data:/consul/data
+    command: >
+      sh -c "exec docker-entrypoint.sh postgres &
+             until psql -U postgres -c 'SELECT 1' > /dev/tcp/127.0.0.1/5432 2>/dev/null; do sleep 1; done;
+             psql -U postgres -c 'CREATE DATABASE keycloak_db;';
+             psql -U postgres -c 'CREATE DATABASE accounts_db;';
+             psql -U postgres -c 'CREATE DATABASE transfers_db;';
+             psql -U postgres -c 'CREATE DATABASE cash_db;';
+             wait"
+
     healthcheck:
-      test: [ "CMD", "consul", "members" ]
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 6
+
+
+
+  bank-kafka:
+    image: apache/kafka:3.7.0
+    container_name: bank-kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CLUSTER_ID: 4L62YD3VTu6S3v1QBc6YkA
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://bank-kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@127.0.0.1:9093
+      KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "true"
+
+      KAFKA_LOG_DIRS: "/var/lib/kafka/data"
+      KAFKA_METADATA_LOG_DIR: "/var/lib/kafka/metadata"
+    volumes:
+      - kafka_data:/var/lib/kafka
+#    healthcheck:
+#      test: ["CMD", "/opt/kafka/bin/kafka-broker-api-versions.sh", "--bootstrap-server", "localhost:9092"]
+#      interval: 5s
+#      timeout: 5s
+#      retries: 5
 
   bank-keycloak:
     image: quay.io/keycloak/keycloak:24.0.5
@@ -47,7 +243,6 @@ services:
       KC_DB_URL: jdbc:postgresql://bank-postgres:5432/keycloak_db
       KC_DB_USERNAME: postgres
       KC_DB_PASSWORD: root_password
-      #KC_HOSTNAME_PROVIDER: "request"
       KC_HOSTNAME: bank-keycloak
       KC_HOSTNAME_STRICT_BACKCHANNEL: "false"
     ports:
@@ -55,12 +250,11 @@ services:
     depends_on:
       bank-postgres:
         condition: service_healthy
-
-    healthcheck:
-      test: [ "CMD-SHELL", "sh -c 'echo > /dev/tcp/127.0.0.1/8080'" ]
-      interval: 5s
-      timeout: 5s
-      retries: 10
+#    healthcheck:
+#      test: [ "CMD", "/opt/keycloak/bin/kcadm.sh", "config", "credentials", "--server", "http://localhost:8080", "--realm", "master", "--user", "admin", "--password", "admin" ]
+#      interval: 10s
+#      timeout: 5s
+#      retries: 12
 
   # 1. Сервис аккаунтов
   accounts-service:
@@ -72,15 +266,14 @@ services:
     depends_on:
       bank-postgres:
         condition: service_healthy
-      consul:
-        condition: service_healthy
       bank-keycloak:
-        condition: service_healthy
+        condition: service_started
+      bank-kafka:
+        condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      POSTGRES_HOST: bank-postgres
-      KEYCLOAK_HOST: bank-keycloak
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bank-postgres:5432/accounts_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: bank-kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://bank-keycloak:8080/realms/bank-realm
 
   # 2. API Gateway
   bank-gateway:
@@ -90,16 +283,25 @@ services:
     ports:
       - "8085:8085"
     depends_on:
-      consul:
-        condition: service_healthy
       bank-keycloak:
         condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      KEYCLOAK_HOST: bank-keycloak
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
-      SPRING_CLOUD_CONSUL_DISCOVERY_INSTANCE_ID: "bank-gateway"
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://bank-keycloak:8080/realms/bank-realm
 
+      SPRING_CLOUD_GATEWAY_ROUTES_0_ID: "account-service"
+      SPRING_CLOUD_GATEWAY_ROUTES_0_URI: "http://bank-accounts:8082"
+      SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0: "Path=/accounts/**"
+      SPRING_CLOUD_GATEWAY_ROUTES_0_FILTERS_0_NAME: "TokenRelay"
+
+      SPRING_CLOUD_GATEWAY_ROUTES_1_ID: "transfer-service"
+      SPRING_CLOUD_GATEWAY_ROUTES_1_URI: "http://bank-transfers:8083"
+      SPRING_CLOUD_GATEWAY_ROUTES_1_PREDICATES_0: "Path=/transfers,/transfers/**"
+      SPRING_CLOUD_GATEWAY_ROUTES_1_FILTERS_0_NAME: "TokenRelay"
+
+      SPRING_CLOUD_GATEWAY_ROUTES_2_ID: "cash-service"
+      SPRING_CLOUD_GATEWAY_ROUTES_2_URI: "http://bank-cash:8087"
+      SPRING_CLOUD_GATEWAY_ROUTES_2_PREDICATES_0: "Path=/cash,/cash/**"
+      SPRING_CLOUD_GATEWAY_ROUTES_2_FILTERS_0_NAME: "TokenRelay"
 
   # 3. Сервис уведомлений
   notification-service:
@@ -108,32 +310,38 @@ services:
     ports:
       - "8086:8086"
     depends_on:
-      consul:
-        condition: service_healthy
       bank-keycloak:
         condition: service_started
+      bank-kafka:
+        condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      KEYCLOAK_HOST: bank-keycloak
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: bank-kafka:9092
 
   # 4. Фронтенд Thymeleaf
   my-bank-front-app:
     build: ./my-bank-front-app
+    image: bank-frontend-fresh:v1
     container_name: bank-frontend
     ports:
       - "8084:8084"
     depends_on:
-      consul:
-        condition: service_healthy
       bank-keycloak:
-        condition: service_healthy
+        condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      KEYCLOAK_HOST: bank-keycloak
-      GATEWAY_HOST: bank-gateway
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+#      GATEWAY_HOST: bank-gateway
+      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: http://bank-keycloak:8080/realms/bank-realm
+      APP_SERVICES_GATEWAY_URL: "http://bank-gateway:8085"
+      SPRING_CLOUD_CONSUL_ENABLED: "false"
+      SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED: "false"
+      SPRING_CLOUD_CONSUL_CONFIG_ENABLED: "false"
 
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://localhost:8080/realms/bank-realm"
+
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+
+  # 5. Сервис переводов
   transfer-service:
     build: ./transfer-service
     container_name: bank-transfers
@@ -142,16 +350,16 @@ services:
     depends_on:
       bank-postgres:
         condition: service_healthy
-      consul:
-        condition: service_healthy
       bank-keycloak:
-        condition: service_healthy
+        condition: service_started
+      bank-kafka:
+        condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      POSTGRES_HOST: bank-postgres
-      KEYCLOAK_HOST: bank-keycloak
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bank-postgres:5432/transfers_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: bank-kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://bank-keycloak:8080/realms/bank-realm
 
+  # 6. Сервис кассы
   cash-service:
     build: ./cash-service
     container_name: bank-cash
@@ -160,15 +368,15 @@ services:
     depends_on:
       bank-postgres:
         condition: service_healthy
-      consul:
-        condition: service_healthy
       bank-keycloak:
-        condition: service_healthy
+        condition: service_started
+      bank-kafka:
+        condition: service_started
     environment:
-      CONSUL_HOST: bank-consul
-      POSTGRES_HOST: bank-postgres
-      KEYCLOAK_HOST: bank-keycloak
-      SPRING_CLOUD_CONSUL_DISCOVERY_PREFER_IP_ADDRESS: "true"
+      SPRING_DATASOURCE_URL: jdbc:postgresql://bank-postgres:5432/cash_db
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: bank-kafka:9092
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://bank-keycloak:8080/realms/bank-realm
+
 volumes:
   pgdata:
-  consul_data:
+  kafka_data:
