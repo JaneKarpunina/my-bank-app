@@ -4,6 +4,7 @@ import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 import ru.yandex.practicum.mybankfront.dto.AccountResponse;
 
 import java.time.LocalDate;
@@ -50,6 +51,10 @@ public class GatewayClient {
 
 
     private void fallbackPost(String uri, String token, UUID idempotencyKey, Object bodyPayload, Throwable exception) {
+
+        if (exception instanceof WebClientResponseException) {
+            throw (WebClientResponseException) exception;
+        }
         throw new IllegalStateException("Банковский шлюз временно недоступен. Операция отклонена предохранителем.");
     }
 }

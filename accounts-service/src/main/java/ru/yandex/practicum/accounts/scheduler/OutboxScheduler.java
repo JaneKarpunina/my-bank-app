@@ -1,10 +1,10 @@
 package ru.yandex.practicum.accounts.scheduler;
 
-import org.springframework.beans.factory.annotation.Qualifier;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import ru.yandex.practicum.accounts.client.NotificationClient;
 import ru.yandex.practicum.accounts.dto.EventEnvelope;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
 import ru.yandex.practicum.accounts.repository.OutboxRepository;
@@ -18,22 +18,29 @@ public class OutboxScheduler {
 
     private final OutboxRepository outboxRepository;
     private final OutboxStatusService outboxStatusService;
-    private final NotificationClient notificationClient;
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+
+    @Value("${app.kafka.topics.notification:bank-notifications}")
+    private String notificationTopic;
 
     public OutboxScheduler(
             OutboxRepository outboxRepository,
             OutboxStatusService outboxStatusService,
-            NotificationClient notificationClient) {
+            KafkaTemplate<String, String> kafkaTemplate,
+            ObjectMapper objectMapper) {
 
         this.outboxRepository = outboxRepository;
         this.outboxStatusService = outboxStatusService;
-        this.notificationClient = notificationClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
 
 
     @Scheduled(fixedDelay = 5000)
     public void processOutboxMessages() {
-        List<OutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+        List<OutboxMessage> pendingMessages = outboxRepository.findMessagesForProcessing();
 
         for (OutboxMessage message : pendingMessages) {
             try {
@@ -45,8 +52,9 @@ public class OutboxScheduler {
                         Instant.now()
                 );
 
+                String jsonPayload = objectMapper.writeValueAsString(envelope);
 
-                notificationClient.sendNotification(envelope);
+                kafkaTemplate.send(notificationTopic, jsonPayload).get();
 
                 outboxStatusService.updateStatus(message.getId(), "PROCESSED", message.getAttempts());
 

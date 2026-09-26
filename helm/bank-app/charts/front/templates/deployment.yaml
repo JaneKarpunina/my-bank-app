@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: front
+  labels:
+    app: front
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+      app: front
+  template:
+    metadata:
+      labels:
+        app: front
+    spec:
+      initContainers:
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z keycloak 8080; do echo waiting for keycloak; sleep 3; done;' ]
+      containers:
+        - name: front
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
+            - name: SPRING_CLOUD_CONSUL_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
+              value: "false"
+
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID
+              value: "bank-ui"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: FRONT_KEYCLOAK_CLIENT_SECRET
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_AUTHORIZATION_GRANT_TYPE
+              value: "authorization_code"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_SCOPE
+              value: "openid,profile"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_REDIRECT_URI
+              value: "{baseUrl}/login/oauth2/code/{registrationId}"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_PROVIDER
+              value: "keycloak"
+
+
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+              value: "http://keycloak:8080/realms/bank-realm"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
+              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/auth"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
+              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
+              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+
+
+            - name: APP_SERVICES_GATEWAY_URL
+              value: "http://gateway:8085"
+
+
+            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_MAX_ATTEMPTS
+              value: "3"
+            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_WAIT_DURATION
+              value: "1s"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_SLIDING_WINDOW_SIZE
+              value: "5"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_FAILURE_RATE_THRESHOLD
+              value: "50"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_WAIT_DURATION_IN_OPEN_STATE
+              value: "10s"

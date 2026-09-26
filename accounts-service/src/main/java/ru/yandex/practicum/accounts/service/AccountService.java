@@ -12,6 +12,7 @@ import ru.yandex.practicum.accounts.repository.IdempotencyRepository;
 import ru.yandex.practicum.accounts.repository.OutboxRepository;
 
 import java.time.LocalDate;
+import java.time.Period;
 import java.util.List;
 import java.util.UUID;
 
@@ -47,6 +48,20 @@ public class AccountService {
         if (idempotencyRepository.existsById(idempotencyKey)) {
             return;
         }
+
+        if (newName == null || newName.trim().isEmpty()) {
+            throw new IllegalArgumentException("Имя не может быть пустым");
+        }
+
+        if (newBirthDate == null) {
+            throw new IllegalArgumentException("Дата рождения должна быть указана");
+        }
+
+        int age = Period.between(newBirthDate, LocalDate.now()).getYears();
+        if (age < 18) {
+            throw new IllegalArgumentException("Редактирование профиля доступно только для пользователей старше 18 лет");
+        }
+
 
         BankAccount account = accountRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Аккаунт не найден"));

@@ -1,0 +1,99 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-init-script
+  labels:
+    app: bank-postgres
+data:
+  init-multiple-databases.sh: |
+    #!/bin/bash
+    set -e
+    set -u
+
+    function create_user_and_database() {
+        local database=$1
+        echo "  Creating database '$database'"
+        psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" <<-EOSQL
+            CREATE DATABASE $database;
+            GRANT ALL PRIVILEGES ON DATABASE $database TO $POSTGRES_USER;
+    EOSQL
+    }
+
+    if [ -n "$POSTGRES_MULTIPLE_DATABASES" ]; then
+        echo "Multiple database creation requested: $POSTGRES_MULTIPLE_DATABASES"
+        for db in $(echo $POSTGRES_MULTIPLE_DATABASES | tr ',' ' '); do
+            create_user_and_database $db
+        done
+        echo "Multiple databases created"
+    fi
+    
+    echo "Initializing cash_db schema..."
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "cash_db" <<-EOSQL
+        CREATE TABLE IF NOT EXISTS cash_idempotency (
+            id UUID PRIMARY KEY,
+            status VARCHAR(50) NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS cash_outbox (
+            id UUID PRIMARY KEY,
+            event_type VARCHAR(100) NOT NULL,
+            payload JSONB NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            attempts INT NOT NULL DEFAULT 0
+        );
+    EOSQL
+    echo "cash_db schema successfully initialized!"
+    
+    echo "Initializing account_db schema and data..."
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "account_db" <<-EOSQL
+        CREATE TABLE IF NOT EXISTS bank_accounts (
+            id BIGSERIAL PRIMARY KEY,
+            username VARCHAR(255) NOT NULL UNIQUE,
+            name VARCHAR(255) NOT NULL,
+            birth_date DATE NOT NULL,
+            balance INT NOT NULL DEFAULT 0
+        );
+
+        CREATE TABLE IF NOT EXISTS outbox_messages (
+            id UUID PRIMARY KEY,
+            aggregate_type VARCHAR(255) NOT NULL,
+            aggregate_id VARCHAR(255) NOT NULL,
+            event_type VARCHAR(255) NOT NULL,
+            payload JSONB NOT NULL,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            attempts INT NOT NULL DEFAULT 0,
+            status VARCHAR(50) NOT NULL DEFAULT 'PENDING'
+        );
+
+        CREATE TABLE IF NOT EXISTS account_idempotency (
+            id UUID PRIMARY KEY,
+            status VARCHAR(50) NOT NULL
+        );
+    
+    CREATE INDEX IF NOT EXISTS idx_outbox_status_created ON outbox_messages(status, created_at);
+
+        INSERT INTO bank_accounts (username, name, birth_date, balance)
+        VALUES
+            ('ivan_petrov', 'Иван Петров', '1995-05-15', 150000),
+            ('anna_smirnova', 'Анна Смирнова', '1998-11-23', 45000),
+            ('ivanov', 'Сергей Иванов', '1990-02-02', 8900)
+        ON CONFLICT (username) DO NOTHING;
+    EOSQL
+    echo "account_db successfully initialized with schema and default users!"
+    
+    echo "Initializing transfer_db schema..."
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "transfer_db" <<-EOSQL
+        CREATE TABLE IF NOT EXISTS idempotency_keys (
+            id UUID PRIMARY KEY,
+            status VARCHAR(50) NOT NULL
+        );
+
+        CREATE TABLE IF NOT EXISTS transfer_outbox (
+            id UUID PRIMARY KEY,
+            event_type VARCHAR(100) NOT NULL,
+            payload JSONB NOT NULL,
+            status VARCHAR(50) NOT NULL,
+            attempts INT NOT NULL DEFAULT 0
+        );
+    EOSQL
+    echo "transfer_db schema successfully initialized!"

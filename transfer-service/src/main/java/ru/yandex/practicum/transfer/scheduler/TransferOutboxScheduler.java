@@ -1,10 +1,10 @@
 package ru.yandex.practicum.transfer.scheduler;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import ru.yandex.practicum.transfer.client.NotificationClient;
 import ru.yandex.practicum.transfer.dto.EventEnvelope;
 import ru.yandex.practicum.transfer.entity.TransferOutboxMessage;
 import ru.yandex.practicum.transfer.repository.TransferOutboxRepository;
@@ -18,20 +18,27 @@ public class TransferOutboxScheduler {
 
     private final TransferOutboxRepository outboxRepository;
     private final OutboxStatusService outboxStatusService;
-    private final NotificationClient notificationClient;
+
+    private final KafkaTemplate<String, String> kafkaTemplate;
+    private final ObjectMapper objectMapper;
+
+    @Value("${app.kafka.topics.notification:bank-notifications}")
+    private String notificationTopic;
 
     public TransferOutboxScheduler(TransferOutboxRepository outboxRepository,
                                    OutboxStatusService outboxStatusService,
-                                   NotificationClient notificationClient) {
+                                   KafkaTemplate<String, String> kafkaTemplate,
+                                   ObjectMapper objectMapper) {
         this.outboxRepository = outboxRepository;
         this.outboxStatusService = outboxStatusService;
-        this.notificationClient = notificationClient;
+        this.kafkaTemplate = kafkaTemplate;
+        this.objectMapper = objectMapper;
     }
 
     @Scheduled(fixedDelay = 5000)
     public void processTransferOutboxMessages() {
 
-        List<TransferOutboxMessage> pendingMessages = outboxRepository.findByStatus("PENDING");
+        List<TransferOutboxMessage> pendingMessages = outboxRepository.findMessagesForProcessing();
 
         for (TransferOutboxMessage message : pendingMessages) {
             try {
@@ -44,7 +51,9 @@ public class TransferOutboxScheduler {
                         Instant.now()
                 );
 
-                notificationClient.sendNotification(envelope);
+                String jsonPayload = objectMapper.writeValueAsString(envelope);
+
+                kafkaTemplate.send(notificationTopic, jsonPayload).get();
 
                 outboxStatusService.updateStatus(message.getId(), "PROCESSED", message.getAttempts());
 
