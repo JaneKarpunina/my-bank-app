@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS transfer_idempotency (
+CREATE TABLE IF NOT EXISTS idempotency_keys (
     id UUID PRIMARY KEY,
     status VARCHAR(50) NOT NULL
 );
