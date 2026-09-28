@@ -11,6 +11,5 @@ import java.util.UUID;
 @Repository
 public interface CashOutboxRepository extends JpaRepository<CashOutboxMessage, UUID> {
 
-    @Query("SELECT m FROM CashOutboxMessage m WHERE m.status = 'PENDING' OR m.status = 'FAILED'")
-    List<CashOutboxMessage> findMessagesForProcessing();
+    List<CashOutboxMessage> findByStatusOrderByCreatedAtAsc(String status);
 }

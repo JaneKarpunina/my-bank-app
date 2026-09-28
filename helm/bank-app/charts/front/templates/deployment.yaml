@@ -60,6 +60,8 @@ spec:
               value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
               value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI
+              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo"
 
 
             - name: APP_SERVICES_GATEWAY_URL

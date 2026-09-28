@@ -8,7 +8,7 @@ spec:
   type: NodePort
   ports:
     - port: 8084
-      targetPort: 8080
+      targetPort: 8084
       nodePort: 30080 # Открывает http://localhost:30080 или http://IP_MINIKUBE:30080
       protocol: TCP
       name: http

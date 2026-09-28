@@ -59,7 +59,8 @@ class CashOutboxSchedulerIntegrationTest {
         message.setEventType("CASH_DEPOSITED");
         message.setPayload("{\"amount\": 1000, \"username\": \"ivanov\"}");
         message.setStatus("PENDING");
-        message.setAttempts(0);
+
+        message.setCreatedAt(java.time.LocalDateTime.now());
 
         outboxRepository.save(message);
 

@@ -60,7 +60,8 @@ class TransferOutboxSchedulerIntegrationTest {
         message.setEventType("TRANSFER_COMPLETED");
         message.setPayload("{\"amount\": 500, \"sender\": \"ivanov\", \"recipient\": \"petrov\"}");
         message.setStatus("PENDING");
-        message.setAttempts(0);
+
+        message.setCreatedAt(java.time.LocalDateTime.now());
 
         outboxRepository.save(message);
 

@@ -57,15 +57,15 @@ helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespac
 Откройте два параллельных окна терминала и пробросьте порты фронтенда и сервера авторизации напрямую на вашу Windows-машину:
 ```bash
 # В Окне №1: Проброс Фронтенда на свободный порт 9090 Windows
-kubectl port-forward deployment/front 9090:8080 -n bank
+kubectl port-forward svc/front 8084:8084 -n bank
 
 # В Окне №2: Проброс Keycloak на стандартный порт 8080 Windows
-kubectl port-forward deployment/keycloak 8080:8080 -n bank
+kubectl port-forward svc/keycloak 8080:8080 -n bank
 ```
 
 ### 3. Вход в личный кабинет банка
 Откройте браузер в **режиме Инкогнито** и перейдите по адресу:
-👉 **http://localhost:9090/account**
+👉 **http://localhost:8084/account**
 
 Система автоматически перенаправит вас на защищенную форму авторизации Keycloak кластера Kubernetes. Для входа используйте тестовые финтех-данные:
 * **Логин:** `ivanov`
@@ -76,3 +76,24 @@ kubectl port-forward deployment/keycloak 8080:8080 -n bank
 ## Тестирование
 
 Для запуска тестов из корня проекта выполните команду mvn test
+
+# Инструкция по запуску в докер
+
+### 1. Сборка и холодный запуск
+
+в файл C:\Windows\System32\drivers\etc\hosts добавьте строку 127.0.0.1   bank-keycloak
+
+Запустите полную цепочку компиляции артефактов и сборки контейнеров одной командой:
+```bash
+# Сборка свежих .jar пакетов
+mvn clean package -DskipTests
+
+# Холодный запуск платформы с очисткой кэша
+docker compose down -v
+docker compose up -d --build
+```
+
+### 2. Доступ к локальным веб-интерфейсам
+* **Фронтенд Личного Кабинета:** [http://localhost:8084/account](http://localhost:8084/account)
+* **Панель Keycloak SSO:** [http://localhost:8080](http://localhost:8080) (Логин/Пароль: `admin` / `admin`)
+* **Тестовый пользователь:** `ivanov` / `password`

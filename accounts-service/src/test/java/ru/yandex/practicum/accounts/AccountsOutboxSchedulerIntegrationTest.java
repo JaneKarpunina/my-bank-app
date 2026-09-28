@@ -61,9 +61,9 @@ class AccountsOutboxSchedulerIntegrationTest {
         message.setEventType("CLIENT_INFO_UPDATED");
         message.setPayload("{\"username\": \"ivanov\", \"name\": \"Сергей Иванов\"}");
         message.setStatus("PENDING");
-        message.setAttempts(0);
         message.setAggregateId("ivanov");
         message.setAggregateType("Account");
+        message.setCreatedAt(java.time.LocalDateTime.now());
         outboxRepository.save(message);
 
         Map<String, Object> consumerProps = KafkaTestUtils.consumerProps("accounts-test-group", "true", embeddedKafkaBroker);

@@ -82,7 +82,6 @@ public class AccountService {
         outboxMessage.setEventType("CLIENT_INFO_UPDATED");
         outboxMessage.setPayload(jsonPayload);
         outboxMessage.setStatus("PENDING");
-        outboxMessage.setAttempts(0);
 
         outboxRepository.save(outboxMessage);
 

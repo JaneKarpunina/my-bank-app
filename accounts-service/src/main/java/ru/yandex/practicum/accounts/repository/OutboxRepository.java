@@ -11,7 +11,6 @@ import java.util.UUID;
 @Repository
 public interface OutboxRepository extends JpaRepository<OutboxMessage, UUID> {
 
-    @Query("SELECT m FROM OutboxMessage m WHERE m.status = 'PENDING' OR m.status = 'FAILED'")
-    List<OutboxMessage> findMessagesForProcessing();
+    List<OutboxMessage> findByStatusOrderByCreatedAtAsc(String status);
 }
 

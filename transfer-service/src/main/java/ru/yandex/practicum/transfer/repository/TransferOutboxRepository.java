@@ -11,6 +11,5 @@ import java.util.UUID;
 @Repository
 public interface TransferOutboxRepository extends JpaRepository<TransferOutboxMessage, UUID> {
 
-    @Query("SELECT m FROM TransferOutboxMessage m WHERE m.status = 'PENDING' OR m.status = 'FAILED'")
-    List<TransferOutboxMessage> findMessagesForProcessing();
+    List<TransferOutboxMessage> findByStatusOrderByCreatedAtAsc(String status);;
 }

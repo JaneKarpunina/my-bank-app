@@ -220,25 +220,15 @@ services:
       SERVER_PORT: "8084"
       FRONT_KEYCLOAK_CLIENT_SECRET: "${FRONT_KEYCLOAK_CLIENT_SECRET:?FRONT_KEYCLOAK_CLIENT_SECRET must be set}"
       APP_SERVICES_GATEWAY_URL: http://bank-gateway:8085
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: http://localhost:8080/realms/bank-realm/protocol/openid-connect/auth
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://bank-keycloak:8080/realms/bank-realm"
 
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/token
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/certs
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo
-
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://localhost:8080/realms/bank-realm"
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://bank-keycloak:8080/realms/bank-realm"
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://localhost:8080/realms/bank-realm"
-      #SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI: "http://bank-keycloak:8080/realms/bank-realm"
-
-      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: "http://localhost:8080/realms/bank-realm/protocol/openid-connect/auth"
+      SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/auth"
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
       SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI: "http://bank-keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo"
 
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_CLIENT-ID: "bank-ui"
 
-        # Возвращаем каноничное свойство для поиска имени пользователя
       SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_USER_NAME_ATTRIBUTE: "preferred_username"
 
 
