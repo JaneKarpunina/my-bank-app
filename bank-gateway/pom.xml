@@ -19,17 +19,6 @@
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-gateway</artifactId>
         </dependency>
-
-        <!-- Принудительные реактивные зависимости (добавили на Шаге 1) -->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-webflux</artifactId>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.springframework.boot</groupId>-->
-<!--            <artifactId>spring-boot-starter-reactor-netty</artifactId>-->
-<!--        </dependency>-->
-
         <!-- Охрана эндпоинтов гейтвея через JWT -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -38,16 +27,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-client</artifactId>
-        </dependency>
-
-        <!-- Инфраструктура Consul -->
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-config</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-consul-discovery</artifactId>
         </dependency>
 
         <dependency>

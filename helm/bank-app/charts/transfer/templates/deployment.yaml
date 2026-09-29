@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transfer
+  labels:
+    app: transfer
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transfer
+  template:
+    metadata:
+      labels:
+        app: transfer
+    spec:
+      initContainers:
+        - name: wait-for-postgres
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z bank-postgres 5432; do echo waiting for postgres; sleep 3; done;' ]
+        - name: wait-for-keycloak
+          image: busybox:1.36
+          command: [ 'sh', '-c', 'until nc -z keycloak 8080; do echo waiting for keycloak; sleep 3; done;' ]
+        - name: wait-for-kafka
+          image: busybox:1.36
+          command: ['sh', '-c', 'until nc -z {{ .Release.Name }}-kafka 9092; do echo waiting for kafka; sleep 3; done;']
+      containers:
+        - name: transfer
+          image: "my-registry/transfer-service:latest"
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--spring.security.oauth2.client.registration.transfer-client.provider=keycloak"
+          ports:
+            - containerPort: 8080
+              name: http
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-kafka-config
+          env:
+            - name: SERVER_ADDRESS
+              value: "0.0.0.0"
+            - name: SPRING_CLOUD_CONSUL_CONFIG_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
+              value: "false"
+
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://bank-postgres:5432/transfer_db"
+            - name: SPRING_DATASOURCE_USERNAME
+              value: "postgres"
+            - name: SPRING_DATASOURCE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: POSTGRES_PASSWORD
+
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_CLIENT_ID
+              value: "transfer-service-client"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: bank-global-secrets
+                  key: TRANSFER_CLIENT_SECRET
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_CLIENT_AUTHENTICATION_METHOD
+              value: "client_secret_post"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_AUTHORIZATION_GRANT_TYPE
+              value: "client_credentials"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_TRANSFER_CLIENT_PROVIDER
+              value: "keycloak"
+            - name: SPRING_CLOUD_LOADBALANCER_ENABLED
+              value: "false"
+            - name: SPRING_CLOUD_DISCOVERY_ENABLED
+              value: "false"
+            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
+              value: "http://keycloak:8080/realms/bank-realm"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
+              value: "http://keycloak:8080/realms/bank-realm"
+            - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+
+            - name: APP_SERVICES_ACCOUNTS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: bank-global-config
+                  key: ACCOUNTS_URL
+            - name: APP_SERVICES_NOTIFICATION_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: bank-global-config
+                  key: NOTIFICATION_URL
+
+            - name: RESILIENCE4J_RETRY_INSTANCES_ACCOUNTS_MAX_ATTEMPTS
+              valueFrom:
+                configMapKeyRef:
+                  name: bank-global-config
+                  key: RESILIENCE4J_RETRY_INSTANCES_ACCOUNTS_MAX_ATTEMPTS
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_SLIDING_WINDOW_SIZE
+              valueFrom:
+                configMapKeyRef:
+                  name: bank-global-config
+                  key: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_SLIDING_WINDOW_SIZE
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB
+              value: "DEBUG"
+            - name: LOGGING_LEVEL_ORG_HIBERNATE_SQL
+              value: "DEBUG"
+            - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+              value: "{{ .Release.Name }}-kafka:9092"
+            - name: APP_KAFKA_TOPICS_NOTIFICATION
+              value: "{{ .Values.global.notificationTopic }}"

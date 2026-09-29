@@ -16,10 +16,9 @@ public class OutboxStatusService {
     }
 
     @Transactional
-    public void updateStatus(UUID id, String status, int attempts) {
+    public void updateStatus(UUID id, String status) {
         repository.findById(id).ifPresent(message -> {
             message.setStatus(status);
-            message.setAttempts(attempts);
         });
     }
 }

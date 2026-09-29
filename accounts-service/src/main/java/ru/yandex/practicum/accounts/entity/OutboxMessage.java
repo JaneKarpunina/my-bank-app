@@ -9,6 +9,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+import org.hibernate.annotations.Generated;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 
@@ -39,12 +40,11 @@ public class OutboxMessage {
     @Column(nullable = false, columnDefinition = "jsonb")
     private String payload;
 
+    @Generated
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Column(nullable = false)
     private String status = "PENDING";
 
-    @Column(nullable = false)
-    private int attempts = 0;
 }

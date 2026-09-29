@@ -96,7 +96,6 @@ public class CashService {
         outboxMessage.setEventType("CASH_OPERATION_COMPLETED");
         outboxMessage.setPayload(objectMapper.writeValueAsString(request));
         outboxMessage.setStatus("PENDING");
-        outboxMessage.setAttempts(0);
         outboxRepository.save(outboxMessage);
     }
 }

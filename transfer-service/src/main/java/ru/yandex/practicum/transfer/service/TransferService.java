@@ -108,7 +108,6 @@ public class TransferService {
             outboxMessage.setEventType("TRANSFER_COMPLETED");
             outboxMessage.setPayload(objectMapper.writeValueAsString(eventDto));
             outboxMessage.setStatus("PENDING");
-            outboxMessage.setAttempts(0);
             outboxRepository.save(outboxMessage);
         } catch (Exception e) {
             throw new RuntimeException("Ошибка записи Outbox: " + e.getMessage());
