@@ -9,8 +9,6 @@ data:
     {
       "realm": "bank-realm",
       "enabled": true,
-    
-      "attributes": { "frontendUrl": "http://keycloak.local" },
       "roles": {
         "realm": [
           { "name": "ROLE_BALANCE_MODIFIER", "description": "Право изменять баланс" },
