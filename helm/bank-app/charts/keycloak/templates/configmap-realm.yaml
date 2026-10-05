@@ -21,8 +21,8 @@ data:
           "enabled": true,
           "clientAuthenticatorType": "client-secret",
           "secret": "${FRONT_KEYCLOAK_CLIENT_SECRET}",
-          "redirectUris": ["http://localhost:8084/*", "http://localhost:9090/*"],
-          "webOrigins": ["http://localhost:8084", "http://localhost:9090", "*"],
+          "redirectUris": ["http://localhost:8084/*", "http://localhost:9090/*", "http://bank.local*"],
+          "webOrigins": ["http://localhost:8084", "http://localhost:9090", "http://bank.local", "*"],
           "publicClient": false,
           "protocol": "openid-connect"
         },

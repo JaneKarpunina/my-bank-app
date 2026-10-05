@@ -41,3 +41,14 @@ spec:
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
               value: "{{ .Values.global.notificationTopic }}"
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: "1.0"
+
+            - name: SPRING_ZIPKIN_BASE_URL
+              value: "http://zipkin:9411"
+
+            - name: MANAGEMENT_TRACING_PROPAGATION_TYPE
+              value: "W3C"
+
+            - name: SPRING_KAFKA_PRODUCER_PROPERTIES_INTERCEPTOR_CLASSES
+              value: "io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler"
