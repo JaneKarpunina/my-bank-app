@@ -15,7 +15,8 @@ spec:
       containers:
         - name: keycloak
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "24.0" }}"
-          args: ["start-dev", "--import-realm"]
+          args: ["start-dev", "--import-realm", "--proxy-headers=xforwarded", "--http-enabled=true" ]
+
           ports:
             - containerPort: 8080
               name: http
@@ -26,7 +27,8 @@ spec:
               value: "admin"
             - name: JAVA_OPTS_APPEND
               value: "-Xms128m -Xmx450m -XX:MaxMetaspaceSize=150m"
-
+            - name: KC_HOSTNAME_URL
+              value: "http://keycloak.local"
             - name: FRONT_KEYCLOAK_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:

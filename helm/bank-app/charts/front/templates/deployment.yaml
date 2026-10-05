@@ -55,7 +55,7 @@ spec:
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
               value: "http://keycloak:8080/realms/bank-realm"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/auth"
+              value: "http://keycloak.local/realms/bank-realm/protocol/openid-connect/auth"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
               value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
@@ -78,3 +78,14 @@ spec:
               value: "50"
             - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_WAIT_DURATION_IN_OPEN_STATE
               value: "10s"
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: "1.0"
+
+            - name: SPRING_ZIPKIN_BASE_URL
+              value: "http://zipkin:9411"
+
+            - name: MANAGEMENT_TRACING_PROPAGATION_TYPE
+              value: "W3C"
+
+            - name: SPRING_KAFKA_PRODUCER_PROPERTIES_INTERCEPTOR_CLASSES
+              value: "io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler"
