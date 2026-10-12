@@ -1,5 +1,6 @@
 package ru.yandex.practicum.transfer.config;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -10,11 +11,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 
 @Configuration
 public class WebClientConfig {
-
-    @Bean
-    public WebClient.Builder loadBalancedWebClientBuilder() {
-        return WebClient.builder();
-    }
 
     @Bean
     public OAuth2AuthorizedClientManager authorizedClientManager(
@@ -40,7 +36,8 @@ public class WebClientConfig {
     @Bean
     public WebClient internalServicesWebClient(
             OAuth2AuthorizedClientManager authorizedClientManager,
-            @Qualifier("loadBalancedWebClientBuilder") WebClient.Builder webClientBuilder) {
+            WebClient.Builder webClientBuilder,
+            ObservationRegistry observationRegistry) {
 
         ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter =
                 new ServletOAuth2AuthorizedClientExchangeFilterFunction(authorizedClientManager);
@@ -48,6 +45,7 @@ public class WebClientConfig {
         oauth2Filter.setDefaultClientRegistrationId("transfer-client");
 
         return webClientBuilder
+                .observationRegistry(observationRegistry)
                 .apply(oauth2Filter.oauth2Configuration())
                 .build();
     }

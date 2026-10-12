@@ -1,7 +1,7 @@
 global:
   springProfile: "prod"
   keycloak:
-    url: "http://keycloak:8080"
+    url: "http://keycloak.local"
     realm: "bank-realm"
   notificationTopic: "bank-notifications"
   security:

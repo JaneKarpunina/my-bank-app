@@ -1,81 +1,47 @@
-# Инструкция по локальному развертыванию My Bank App в Kubernetes
+# Локальный запуск My Bank App через Ingress
 
-## Требования к окружению
-* Установленный **Minikube** (драйвер `docker`)
-* Утилиты **kubectl** и **helm**
-* Запущенный Docker Desktop на Windows
+Нужны Docker Desktop, Minikube, kubectl, Helm, Java 21 и Maven. Команды ниже запускаются из корня проекта в PowerShell. Порт 80 на компьютере должен быть свободен.
 
----
+## 1. Имена для браузера
 
-## Инструкция по запуску
+Добавьте строку в `C:\Windows\System32\drivers\etc\hosts` из редактора, запущенного от имени администратора:
 
-### Шаг 1. Локальная компиляция кода
-Перед сборкой Docker-образов скомпилируйте Java-архивы во всех модулях:
-```bash
-mvn clean package -DskipTests
+```text
+127.0.0.1 bank.local keycloak.local zipkin.local
 ```
 
-### Шаг 2. Подготовка кластера Minikube
-1. Запустите локальный кластер:
-   ```bash
-   minikube start --driver=docker
-   ```
-2. Переключите контекст терминала на встроенный Docker-демон Minikube, чтобы образы собирались прямо в его локальный кэш:
-   ```bash
-   minikube docker-env | Invoke-Expression
-   ```
+## 2. Кластер и образы
 
-### Шаг 3. Сборка Docker-образов проекта
-Соберите образы всех микросервисов из корня проекта:
-```bash
-docker build -t my-registry/accounts-service:latest ./accounts-service
-docker build -t my-registry/cash-service:latest ./cash-service
-docker build -t my-registry/transfer-service:latest ./transfer-service
-docker build -t my-registry/notification-service:latest ./notification-service
-docker build -t my-registry/bank-gateway:latest ./bank-gateway
-docker build -t my-registry/my-bank-front-app:latest ./my-bank-front-app
+```powershell
+minikube start -p bank-app --driver=docker --memory=4000 --cpus=3 --ports=80:80 --addons=ingress
+mvn package -DskipTests
+minikube -p bank-app image build -t my-registry/accounts-service:latest .\accounts-service
+minikube -p bank-app image build -t my-registry/cash-service:latest .\cash-service
+minikube -p bank-app image build -t my-registry/transfer-service:latest .\transfer-service
+minikube -p bank-app image build -t my-registry/notification-service:latest .\notification-service
+minikube -p bank-app image build -t my-registry/bank-gateway:latest .\bank-gateway
+minikube -p bank-app image build -t my-registry/my-bank-front-app:latest .\my-bank-front-app
 ```
 
-### Шаг 4. Деплоймент банковской экосистемы через Helm
-Разверните всю инфраструктуру (Postgres, Keycloak, раздельную Кафку 2/2) и бэкенд одной командой из корня проекта:
+Профиль `bank-app` отделён от других локальных кластеров. Опция `--ports=80:80` публикует HTTP-порт узла Minikube в Docker Desktop; отдельный процесс `kubectl port-forward` не нужен.
+
+## 3. Развёртывание
 
 ```powershell
 helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespace
+helm upgrade --install zipkin .\zipkin -n bank
+kubectl get pods -n bank
 ```
 
----
+Дождитесь состояния `Running` и готовности `1/1` у приложений и Keycloak. Откройте `http://bank.local` и войдите как `ivanov` с паролем `password`. Интерфейс Zipkin доступен по адресу `http://zipkin.local/zipkin/`.
 
-## Сетевой доступ и проверка работоспособности
-
-### 1. Регистрация DNS-хоста Keycloak в Windows
-Для работы редиректов OAuth 2.0 добавьте одну строчку в системный файл `C:\Windows\System32\drivers\etc\hosts` (от имени Администратора):
-```text
-127.0.0.1    keycloak
-```
-
-### 2. Запуск сетевых туннелей Port-Forward
-Откройте два параллельных окна терминала и пробросьте порты фронтенда и сервера авторизации напрямую на вашу Windows-машину:
-```bash
-# В Окне №1: Проброс Фронтенда на свободный порт 9090 Windows
-kubectl port-forward svc/front 8084:8084 -n bank
-
-# В Окне №2: Проброс Keycloak на стандартный порт 8080 Windows
-kubectl port-forward svc/keycloak 8080:8080 -n bank
-```
-
-### 3. Вход в личный кабинет банка
-Откройте браузер в **режиме Инкогнито** и перейдите по адресу:
-👉 **http://localhost:8084/account**
-
-Система автоматически перенаправит вас на защищенную форму авторизации Keycloak кластера Kubernetes. Для входа используйте тестовые финтех-данные:
-* **Логин:** `ivanov`
-* **Пароль:** `password`
-
----
+После изменения Java-кода пересоберите JAR и соответствующий образ. При повторном использовании тега `latest` перезапустите изменённый Deployment, чтобы Pod взял новый образ.
 
 ## Тестирование
 
-Для запуска тестов из корня проекта выполните команду mvn test
+```powershell
+mvn test
+```
 
 # Инструкция по запуску в докер
 
