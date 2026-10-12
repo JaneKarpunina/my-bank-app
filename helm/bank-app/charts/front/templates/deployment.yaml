@@ -23,8 +23,13 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: IfNotPresent
           ports:
-            - containerPort: 8080
+            - containerPort: 8084
               name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
           env:
             - name: SERVER_ADDRESS
               value: "0.0.0.0"
@@ -34,6 +39,10 @@ spec:
               value: "false"
             - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
               value: "false"
+            - name: SPRING_APPLICATION_NAME
+              value: "my-bank-front-app"
+#            - name: JAVA_TOOL_OPTIONS
+#              value: "-Dmanagement.tracing.web.client.lookup-with-observation=true"
 
             - name: SPRING_SECURITY_OAUTH2_CLIENT_REGISTRATION_KEYCLOAK_CLIENT_ID
               value: "bank-ui"
@@ -52,16 +61,16 @@ spec:
               value: "keycloak"
 
 
-            - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_ISSUER_URI
-              value: "http://keycloak:8080/realms/bank-realm"
+            - name: BANK_OAUTH2_PUBLIC_ISSUER
+              value: "{{ .Values.global.keycloak.url }}/realms/{{ .Values.global.keycloak.realm }}"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_AUTHORIZATION_URI
-              value: "http://keycloak.local/realms/bank-realm/protocol/openid-connect/auth"
+              value: "{{ .Values.global.keycloak.url }}/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/auth"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_TOKEN_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/token"
+              value: "http://keycloak:8080/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/token"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_JWK_SET_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+              value: "http://keycloak:8080/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/certs"
             - name: SPRING_SECURITY_OAUTH2_CLIENT_PROVIDER_KEYCLOAK_USER_INFO_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/userinfo"
+              value: "http://keycloak:8080/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/userinfo"
 
 
             - name: APP_SERVICES_GATEWAY_URL
@@ -78,14 +87,24 @@ spec:
               value: "50"
             - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_WAIT_DURATION_IN_OPEN_STATE
               value: "10s"
-            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-              value: "1.0"
-
-            - name: SPRING_ZIPKIN_BASE_URL
-              value: "http://zipkin:9411"
+#            - name: SPRING_ZIPKIN_BASE_URL
+#              value: "http://zipkin:9411"
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
 
             - name: MANAGEMENT_TRACING_PROPAGATION_TYPE
-              value: "W3C"
+              value: "B3"
 
-            - name: SPRING_KAFKA_PRODUCER_PROPERTIES_INTERCEPTOR_CLASSES
-              value: "io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler"
+
+            - name: MANAGEMENT_TRACING_ENABLED
+              value: "true"
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: "1.0"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,metrics,tracing"
+            - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
+              value: "DEBUG"
+
+#            - name: JAVA_TOOL_OPTIONS
+#              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"
+

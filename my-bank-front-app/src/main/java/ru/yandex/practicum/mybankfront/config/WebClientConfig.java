@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.config;
 
+import io.micrometer.observation.ObservationRegistry;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,7 +16,9 @@ public class WebClientConfig {
     public WebClient webClient(
             ClientRegistrationRepository clientRegistrationRepository,
             OAuth2AuthorizedClientRepository authorizedClientRepository,
-            @Value("${app.services.gateway-url}") String gatewayUrl) {
+            WebClient.Builder webClientBuilder,
+            @Value("${app.services.gateway-url}") String gatewayUrl,
+            ObservationRegistry observationRegistry) {
 
         ServletOAuth2AuthorizedClientExchangeFilterFunction oauth2Filter =
                 new ServletOAuth2AuthorizedClientExchangeFilterFunction(
@@ -25,8 +28,9 @@ public class WebClientConfig {
 
         oauth2Filter.setDefaultClientRegistrationId("keycloak");
 
-        return WebClient.builder()
+        return webClientBuilder
                 .baseUrl(gatewayUrl)
+                .observationRegistry(observationRegistry)
                 .apply(oauth2Filter.oauth2Configuration())
                 .build();
     }

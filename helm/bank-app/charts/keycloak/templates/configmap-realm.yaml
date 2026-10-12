@@ -9,6 +9,7 @@ data:
     {
       "realm": "bank-realm",
       "enabled": true,
+      "sslRequired": "none",
       "roles": {
         "realm": [
           { "name": "ROLE_BALANCE_MODIFIER", "description": "Право изменять баланс" },

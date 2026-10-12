@@ -37,18 +37,30 @@ spec:
               value: "false"
             - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
               value: "false"
+            - name: SPRING_APPLICATION_NAME
+              value: "notification-service"
             - name: "spring.kafka.bootstrap-servers"
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
               value: "{{ .Values.global.notificationTopic }}"
-            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
-              value: "1.0"
-
-            - name: SPRING_ZIPKIN_BASE_URL
-              value: "http://zipkin:9411"
+#            - name: SPRING_ZIPKIN_BASE_URL
+#              value: "http://zipkin:9411"
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
 
             - name: MANAGEMENT_TRACING_PROPAGATION_TYPE
-              value: "W3C"
+              value: "B3"
 
-            - name: SPRING_KAFKA_PRODUCER_PROPERTIES_INTERCEPTOR_CLASSES
-              value: "io.micrometer.tracing.handler.PropagatingSenderTracingObservationHandler"
+
+            - name: MANAGEMENT_TRACING_ENABLED
+              value: "true"
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: "1.0"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,metrics,tracing"
+            - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
+              value: "DEBUG"
+
+#            - name: JAVA_TOOL_OPTIONS
+#              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"
+

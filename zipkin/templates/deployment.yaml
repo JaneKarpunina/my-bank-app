@@ -21,6 +21,11 @@ spec:
           ports:
             - containerPort: 9411
               name: http
+          readinessProbe:
+            tcpSocket:
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
 ---
