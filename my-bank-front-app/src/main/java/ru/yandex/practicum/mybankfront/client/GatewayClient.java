@@ -20,8 +20,8 @@ public class GatewayClient {
         this.webClient = webClient;
     }
 
-    @Retry(name = "gateway")
-    @CircuitBreaker(name = "gateway", fallbackMethod = "fallbackGet")
+    @Retry(name = "gateway-get")
+    @CircuitBreaker(name = "gateway-get", fallbackMethod = "fallbackGet")
     public AccountResponse getAccountData(String uri, String token) {
         return webClient.get()
                 .uri(uri)
@@ -31,7 +31,7 @@ public class GatewayClient {
                 .block();
     }
 
-    @CircuitBreaker(name = "gateway", fallbackMethod = "fallbackPost")
+    @CircuitBreaker(name = "gateway-post", fallbackMethod = "fallbackPost")
     public void sendPostOperation(String uri, String token, UUID idempotencyKey, Object bodyPayload) {
         webClient.post()
                 .uri(uri)
@@ -45,8 +45,7 @@ public class GatewayClient {
 
 
     private AccountResponse fallbackGet(String uri, String token, Throwable exception) {
-        return new AccountResponse(
-                "unknown", LocalDate.now(), 0, List.of());
+        throw new RuntimeException("Сервер временно недоступен", exception);
     }
 
 

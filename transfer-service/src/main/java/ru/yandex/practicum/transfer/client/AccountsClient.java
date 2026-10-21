@@ -6,7 +6,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import ru.yandex.practicum.transfer.dto.AccountTransferDto;
-import ru.yandex.practicum.transfer.exception.AccountsServiceUnavailableException;
 
 import java.util.UUID;
 
@@ -39,8 +38,8 @@ public class AccountsClient {
             UUID idempotencyKey,
             AccountTransferDto dto,
             Throwable exception
-    ) {
-        throw new AccountsServiceUnavailableException(exception);
+    ) throws Throwable {
+        throw exception;
     }
 }
 

@@ -70,6 +70,8 @@ public class KafkaConsumerConfig {
 
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
 
+        factory.getContainerProperties().setObservationEnabled(true);
+
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
 
         FixedBackOff backOff = new FixedBackOff(2000L, 2L);

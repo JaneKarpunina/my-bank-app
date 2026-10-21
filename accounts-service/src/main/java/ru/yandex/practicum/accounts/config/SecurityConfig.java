@@ -31,6 +31,7 @@ public class SecurityConfig {
                                 "/accounts/execute-transfer",
                                 "/accounts/execute-cash"
                         ).hasRole("BALANCE_MODIFIER")
+                        .requestMatchers("/actuator/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2

@@ -86,7 +86,7 @@ spec:
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
               value: "1.0"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,metrics,tracing"
+              value: "health,info,metrics,tracing,prometheus"
             - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
               value: "DEBUG"
 

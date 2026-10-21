@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana-deployment
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana-server
+  template:
+    metadata:
+      labels:
+        app: grafana-server
+    spec:
+      containers:
+        - name: grafana
+          image: "grafana/grafana:10.4.1"
+          ports:
+            - containerPort: 3000
+              name: grafana-port
+          env:
+            - name: GF_AUTH_ANONYMOUS_ENABLED
+              value: "true"
+            - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+              value: "Admin"
+            - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+              value: ""
+          volumeMounts:
+            - name: provisioning-volume
+              mountPath: /etc/grafana/provisioning/datasources/prometheus-datasource.yaml
+              subPath: prometheus-datasource.yaml
+            - name: dashboards-provider-volume
+              mountPath: /etc/grafana/provisioning/dashboards/dashboards-provider.yaml
+              subPath: dashboards-provider.yaml
+            - name: storage-volume
+              mountPath: /var/lib/grafana
+      volumes:
+        - name: provisioning-volume
+          configMap:
+            name: grafana-provisioning-conf
+            items:
+              - key: prometheus-datasource.yaml
+                path: prometheus-datasource.yaml
+        - name: dashboards-provider-volume
+          configMap:
+            name: grafana-provisioning-conf
+            items:
+              - key: dashboards-provider.yaml
+                path: dashboards-provider.yaml
+        - name: storage-volume
+          emptyDir: {}

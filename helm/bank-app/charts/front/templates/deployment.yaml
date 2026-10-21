@@ -77,16 +77,27 @@ spec:
               value: "http://gateway:8085"
 
 
-            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_MAX_ATTEMPTS
+            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_GET_MAX_ATTEMPTS
               value: "3"
-            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_WAIT_DURATION
+            - name: RESILIENCE4J_RETRY_INSTANCES_GATEWAY_GET_WAIT_DURATION
               value: "1s"
-            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_SLIDING_WINDOW_SIZE
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_GET_SLIDING_WINDOW_SIZE
               value: "5"
-            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_FAILURE_RATE_THRESHOLD
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_GET_FAILURE_RATE_THRESHOLD
               value: "50"
-            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_WAIT_DURATION_IN_OPEN_STATE
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_GET_WAIT_DURATION_IN_OPEN_STATE
               value: "10s"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_POST_SLIDING_WINDOW_SIZE
+              value: "5"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_POST_FAILURE_RATE_THRESHOLD
+              value: "50"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_WAIT_POST_DURATION_IN_OPEN_STATE
+              value: "10s"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_POST_IGNOREEXCEPTIONS_0_
+              value: "org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest"
+
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_GATEWAY_GET_IGNOREEXCEPTIONS_0_
+              value: "org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest"
 #            - name: SPRING_ZIPKIN_BASE_URL
 #              value: "http://zipkin:9411"
             - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
@@ -101,7 +112,7 @@ spec:
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
               value: "1.0"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,metrics,tracing"
+              value: "health,info,metrics,tracing,prometheus"
             - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
               value: "DEBUG"
 

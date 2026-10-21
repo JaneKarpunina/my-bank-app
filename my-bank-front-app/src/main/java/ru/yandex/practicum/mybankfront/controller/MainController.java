@@ -79,7 +79,7 @@ public class MainController {
             model.addAttribute("errors", finalErrors);
 
             model.addAttribute("name", currentUsername);
-            model.addAttribute("birthdate", "");
+            model.addAttribute("birthdate", LocalDate.now());
             model.addAttribute("sum", 0);
             model.addAttribute("accounts", Collections.emptyList());
         }

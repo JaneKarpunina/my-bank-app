@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server-conf
+  namespace: {{ .Release.Namespace }}
+data:
+  prometheus.yaml: |
+    {{ .Files.Get "prometheus.yaml" | indent 4 | trim }}
+  alert.rules: |
+    groups:
+      - name: bank_alerts
+        rules:
+          - alert: HighHttp5xxRate
+            expr: sum(rate(http_server_requests_seconds_count{status=~"5.."}[1m])) > 0.5
+            for: 30s
+            labels:
+              severity: critical
+            annotations:
+              summary: "Высокий уровень ошибок HTTP 5xx в системе!"
+    
+          - alert: SuspiciousFailedWithdrawals
+            expr: sum by (username) (increase(bank_cash_withdrawal_failed_total[2m])) > 2
+            for: 10s
+            labels:
+              severity: warning
+            annotations:
+              summary: "Обнаружено более 2 неудачных попыток снятия денег для пользователя: {{ `{{ $labels.username }}` }}"
+          - alert: FailedTransfersSpike
+            expr: sum by (sender, recipient) (increase(bank_transfer_failed_total[5m])) > 5
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "Всплеск неудачных переводов! Более 5 ошибок за 5 минут от {{ `{{ $labels.sender }}` }} в адрес {{ `{{ $labels.recipient }}` }}"
+
+          - alert: NotificationDeliveryFailure
+            expr: sum by (username) (increase(bank_notification_failed_total[1m])) > 5
+            for: 30s
+            labels:
+              severity: major
+            annotations:
+              summary: "Сбой отправки нотификаций пользователю {{ `{{ $labels.username }}` }}. Сервис нотификаций перегружен."

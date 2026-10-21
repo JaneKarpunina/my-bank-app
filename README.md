@@ -14,7 +14,7 @@
 
 ```powershell
 minikube start -p bank-app --driver=docker --memory=4000 --cpus=3 --ports=80:80 --addons=ingress
-mvn package -DskipTests
+mvn clean package -DskipTests
 minikube -p bank-app image build -t my-registry/accounts-service:latest .\accounts-service
 minikube -p bank-app image build -t my-registry/cash-service:latest .\cash-service
 minikube -p bank-app image build -t my-registry/transfer-service:latest .\transfer-service
@@ -30,6 +30,8 @@ minikube -p bank-app image build -t my-registry/my-bank-front-app:latest .\my-ba
 ```powershell
 helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespace
 helm upgrade --install zipkin .\zipkin -n bank
+helm upgrade --install bank-prometheus .\prometheus -n bank
+helm upgrade --install bank-grafana .\grafana -n bank
 kubectl get pods -n bank
 ```
 

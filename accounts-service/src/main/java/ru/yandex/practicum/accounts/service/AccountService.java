@@ -1,5 +1,7 @@
 package ru.yandex.practicum.accounts.service;
 
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,12 +24,14 @@ public class AccountService {
     private final AccountRepository accountRepository;
     private final OutboxRepository outboxRepository;
     private final IdempotencyRepository idempotencyRepository;
+    private final MeterRegistry meterRegistry;
 
     public AccountService(AccountRepository accountRepository, OutboxRepository outboxRepository,
-                          IdempotencyRepository idempotencyRepository) {
+                          IdempotencyRepository idempotencyRepository, MeterRegistry meterRegistry) {
         this.accountRepository = accountRepository;
         this.outboxRepository = outboxRepository;
         this.idempotencyRepository = idempotencyRepository;
+        this.meterRegistry = meterRegistry;
     }
 
     @Transactional(readOnly = true)
@@ -101,6 +105,12 @@ public class AccountService {
 
 
         if (amount <= 0) {
+            Counter.builder("bank.transfer.failed.total")
+                    .description("Количество неуспешных попыток перевода денег")
+                    .tag("sender", senderUsername)
+                    .tag("recipient", recipientUsername)
+                    .register(meterRegistry)
+                    .increment();
             throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
         }
 
@@ -112,6 +122,12 @@ public class AccountService {
                 .orElseThrow(() -> new IllegalArgumentException("Получатель '" + recipientUsername + "' не найден"));
 
         if (sender.getBalance() < amount) {
+            Counter.builder("bank.transfer.failed.total")
+                    .description("Количество неуспешных попыток перевода денег")
+                    .tag("sender", senderUsername)
+                    .tag("recipient", recipientUsername)
+                    .register(meterRegistry)
+                    .increment();
             throw new IllegalArgumentException("Недостаточно средств на счете пользователя " + senderUsername);
         }
 
@@ -138,6 +154,9 @@ public class AccountService {
         }
 
         if (amount <= 0) {
+            if (action == CashAction.GET) {
+                incrementBankWithdrawalFailedMetric(username);
+            }
             throw new IllegalArgumentException("Сумма операции должна быть больше нуля");
         }
 
@@ -148,6 +167,7 @@ public class AccountService {
             account.setBalance(account.getBalance() + amount);
         } else if (action == CashAction.GET) {
             if (account.getBalance() < amount) {
+                incrementBankWithdrawalFailedMetric(username);
                 throw new IllegalArgumentException("Недостаточно виртуальных средств на счете для снятия наличных");
             }
             account.setBalance(account.getBalance() - amount);
@@ -163,6 +183,14 @@ public class AccountService {
         idempotencyRepository.save(key);
 
         return ResponseEntity.ok().build();
+    }
+
+    private void incrementBankWithdrawalFailedMetric(String username) {
+        Counter.builder("bank.cash.withdrawal.failed.total")
+                .description("Количество неуспешных попыток снятия денег")
+                .tag("username", username)
+                .register(meterRegistry)
+                .increment();
     }
 }
 

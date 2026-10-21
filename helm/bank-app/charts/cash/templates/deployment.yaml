@@ -31,7 +31,7 @@ spec:
           args:
             - "--spring.security.oauth2.client.registration.cash-client.provider=keycloak"
           ports:
-            - containerPort: 8080
+            - containerPort: 8087
               name: http
           envFrom:
             - configMapRef:
@@ -99,6 +99,8 @@ spec:
               value: "50"
             - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_WAIT_DURATION_IN_OPEN_STATE
               value: "10s"
+            - name: RESILIENCE4J_CIRCUITBREAKER_INSTANCES_ACCOUNTS_IGNOREEXCEPTIONS_0_
+              value: "org.springframework.web.reactive.function.client.WebClientResponseException$BadRequest"
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
@@ -116,9 +118,11 @@ spec:
             - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
               value: "1.0"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,metrics,tracing"
+              value: "health,info,metrics,tracing,prometheus"
             - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
               value: "DEBUG"
+            - name: SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED
+              value: "true"
 
 #            - name: JAVA_TOOL_OPTIONS
 #              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"

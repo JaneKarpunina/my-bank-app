@@ -98,7 +98,9 @@ spec:
             - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
               value: "DEBUG"
             - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
-              value: "health,info,metrics,tracing"
+              value: "health,info,metrics,tracing,prometheus"
+            - name: SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED
+              value: "true"
 
 #            - name: JAVA_TOOL_OPTIONS
 #              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"
