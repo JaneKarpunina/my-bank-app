@@ -19,3 +19,6 @@ scrape_configs:
 
       - target_label: __metrics_path__
         replacement: /actuator/prometheus
+
+      - source_labels: [ __meta_kubernetes_pod_label_app ]
+        target_label: application

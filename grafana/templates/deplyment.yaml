@@ -33,6 +33,10 @@ spec:
             - name: dashboards-provider-volume
               mountPath: /etc/grafana/provisioning/dashboards/dashboards-provider.yaml
               subPath: dashboards-provider.yaml
+
+            - name: bank-dashboards-volume
+              mountPath: /var/lib/grafana/dashboards
+
             - name: storage-volume
               mountPath: /var/lib/grafana
       volumes:
@@ -48,5 +52,10 @@ spec:
             items:
               - key: dashboards-provider.yaml
                 path: dashboards-provider.yaml
+
+        - name: bank-dashboards-volume
+          configMap:
+            name: bank-dashboards-json-conf
+
         - name: storage-volume
           emptyDir: {}

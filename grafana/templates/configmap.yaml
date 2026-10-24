@@ -10,7 +10,7 @@ data:
       - name: Prometheus
         type: prometheus
         access: proxy
-        url: http://bank-prometheus-server:9090
+        url: http://prometheus-service:9090
         isDefault: true
         editable: true
 
@@ -25,3 +25,12 @@ data:
         editable: true
         options:
           path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-dashboards-json-conf
+  namespace: {{ .Release.Namespace }}
+binaryData:
+  jvm-dashboard.json: {{ .Files.Get "dashboards/jvm-dashboard.json" | b64enc }}
+  business-dashboard.json: {{ .Files.Get "dashboards/business-dashboard.json" | b64enc }}
