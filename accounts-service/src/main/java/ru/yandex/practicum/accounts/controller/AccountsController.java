@@ -1,5 +1,6 @@
 package ru.yandex.practicum.accounts.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+@Slf4j
 @RestController
 @RequestMapping("/accounts")
 public class AccountsController {
@@ -26,9 +28,13 @@ public class AccountsController {
     public ResponseEntity<AccountResponse> getAccount(@AuthenticationPrincipal Jwt jwt) {
         String username = jwt.getClaimAsString("preferred_username");
 
+        log.info("Получен запрос на получение данных аккаунта для пользователя: {}", username);
+
         BankAccount account = accountService.getAccountByUsername(username);
 
         List<BankAccount> otherAccounts = accountService.getAllOtherAccounts(username);
+
+        log.debug("Для пользователя {} найдено {} других аккаунтов в системе", username, otherAccounts.size());
 
         List<AccountDto> otherUsersDtoList = otherAccounts.stream()
                 .map(acc -> new AccountDto(
@@ -55,6 +61,8 @@ public class AccountsController {
 
         String username = jwt.getClaimAsString("preferred_username");
 
+        log.info("Получен запрос на обновление профиля пользователя: {}. Idempotency-Key: {}", username, idempotencyKey);
+
         accountService.updateClientInfo(username, request.name(), request.birthdate(), idempotencyKey);
 
         BankAccount updatedAccount = accountService.getAccountByUsername(username);
@@ -79,12 +87,28 @@ public class AccountsController {
     @PostMapping("/execute-transfer")
     public ResponseEntity<Void> executeTransfer(@RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
                                                 @RequestBody AccountTransferDto dto) {
-        return accountService.executeMoneyMovement(dto.sender(), dto.recipient(), dto.amount(), idempotencyKey);
+
+        log.info("Инициация перевода средств. Отправитель: {}, Получатель: {}, Сумма: {}. Idempotency-Key: {}",
+                dto.sender(), dto.recipient(), dto.amount(), idempotencyKey);
+        ResponseEntity<Void> response = accountService.executeMoneyMovement(dto.sender(), dto.recipient(),
+                dto.amount(), idempotencyKey);
+
+        log.debug("Результат перевода средств (Idempotency-Key: {}): Статус сэрвис-слоя {}",
+                idempotencyKey, response.getStatusCode());
+        return response;
     }
 
     @PostMapping("/execute-cash")
     public ResponseEntity<Void> executeCash(@RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
                                             @RequestBody AccountOperationDto dto) {
-        return accountService.executeCashOperation(dto.username(), dto.amount(), dto.action(), idempotencyKey);
+        log.info("Инициация кассовой операции [{}]. Пользователь: {}, Сумма: {}. Idempotency-Key: {}",
+                dto.action(), dto.username(), dto.amount(), idempotencyKey);
+
+        ResponseEntity<Void> response = accountService.executeCashOperation(dto.username(), dto.amount(),
+                dto.action(), idempotencyKey);
+
+        log.debug("Результат кассовой операции [{}] (Idempotency-Key: {}): Статус {}", dto.action(),
+                idempotencyKey, response.getStatusCode());
+        return response;
     }
 }

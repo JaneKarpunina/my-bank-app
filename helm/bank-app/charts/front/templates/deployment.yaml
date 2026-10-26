@@ -115,6 +115,12 @@ spec:
               value: "health,info,metrics,tracing,prometheus"
             - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
               value: "DEBUG"
+            - name: LOGSTASH_HOST
+              value: "logstash"
+            - name: LOGSTASH_PORT
+              value: "5044"
+            - name: LOGGING_LEVEL_ROOT
+              value: "DEBUG"
 
 #            - name: JAVA_TOOL_OPTIONS
 #              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"

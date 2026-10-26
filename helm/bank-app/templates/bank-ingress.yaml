@@ -59,4 +59,14 @@ spec:
                 name: bank-grafana
                 port:
                   number: 3000
+    - host: kibana.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kibana
+                port:
+                  number: 5601
 

@@ -94,4 +94,10 @@ spec:
 #              value: "-Dmanagement.tracing.propagation.type=B3 -Dspring.cloud.gateway.observability.enabled=true"
             - name: SPRING_CLOUD_GATEWAY_OBSERVABILITY_ENABLED
               value: "true"
+            - name: LOGSTASH_HOST
+              value: "logstash"
+            - name: LOGSTASH_PORT
+              value: "5044"
+            - name: LOGGING_LEVEL_ROOT
+              value: "DEBUG"
 

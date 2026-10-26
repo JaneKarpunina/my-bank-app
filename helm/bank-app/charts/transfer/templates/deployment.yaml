@@ -132,6 +132,12 @@ spec:
               value: "DEBUG"
             - name: SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED
               value: "true"
+            - name: LOGSTASH_HOST
+              value: "logstash"
+            - name: LOGSTASH_PORT
+              value: "5044"
+            - name: LOGGING_LEVEL_ROOT
+              value: "DEBUG"
 
 #            - name: JAVA_TOOL_OPTIONS
 #              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"
