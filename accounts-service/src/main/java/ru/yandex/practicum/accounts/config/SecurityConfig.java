@@ -1,5 +1,6 @@
 package ru.yandex.practicum.accounts.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -16,12 +17,15 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        log.info("Инициализация цепочки фильтров безопасности SecurityFilterChain для микросервиса...");
         http
 
                 .csrf(AbstractHttpConfigurer::disable)
@@ -37,7 +41,7 @@ public class SecurityConfig {
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
-
+        log.info("Конфигурация правил HTTP-доступа успешно применена. Доступ к /actuator/ разрешен без токена.");
         return http.build();
     }
 
@@ -48,6 +52,9 @@ public class SecurityConfig {
         JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
 
         jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwt -> {
+
+            String username = jwt.getClaimAsString("preferred_username");
+            log.debug("Обработка JWT токена безопасности. Извлечение ролей Keycloak для пользователя: {}", username);
 
             Collection<GrantedAuthority> authorities = defaultGrantedAuthoritiesConverter.convert(jwt);
 
@@ -60,6 +67,10 @@ public class SecurityConfig {
                         .toList();
 
                 authorities.addAll(keycloakRoles);
+                log.debug("Для пользователя {} успешно извлечены роли из Keycloak: {}", username, roles);
+            }
+            else {
+                log.warn("Внимание! У токена пользователя {} отсутствует секция realm_access.roles!", username);
             }
 
             return authorities;
