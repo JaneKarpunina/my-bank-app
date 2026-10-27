@@ -7,13 +7,13 @@
 Добавьте строку в `C:\Windows\System32\drivers\etc\hosts` из редактора, запущенного от имени администратора:
 
 ```text
-127.0.0.1 bank.local keycloak.local zipkin.local
+127.0.0.1 bank.local keycloak.local zipkin.local prometheus.local grafana.local kibana.local
 ```
 
 ## 2. Кластер и образы
 
 ```powershell
-minikube start -p bank-app --driver=docker --memory=4000 --cpus=3 --ports=80:80 --addons=ingress
+minikube start -p bank-app --driver=docker --memory=13500 --cpus=3 --ports=80:80 --addons=ingress
 mvn clean package -DskipTests
 minikube -p bank-app image build -t my-registry/accounts-service:latest .\accounts-service
 minikube -p bank-app image build -t my-registry/cash-service:latest .\cash-service
@@ -32,6 +32,7 @@ helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespac
 helm upgrade --install zipkin .\zipkin -n bank
 helm upgrade --install bank-prometheus .\prometheus -n bank
 helm upgrade --install bank-grafana .\grafana -n bank
+helm upgrade --install bank-logging .\elk -n bank
 kubectl get pods -n bank
 ```
 
