@@ -13,7 +13,7 @@
 ## 2. Кластер и образы
 
 ```powershell
-minikube start -p bank-app --driver=docker --memory=13500 --cpus=3 --ports=80:80 --addons=ingress
+minikube start -p bank-app --driver=docker --memory=9000 --cpus=3 --ports=80:80 --addons=ingress
 mvn clean package -DskipTests
 minikube -p bank-app image build -t my-registry/accounts-service:latest .\accounts-service
 minikube -p bank-app image build -t my-registry/cash-service:latest .\cash-service
@@ -37,6 +37,7 @@ kubectl get pods -n bank
 ```
 
 Дождитесь состояния `Running` и готовности `1/1` у приложений и Keycloak. Откройте `http://bank.local` и войдите как `ivanov` с паролем `password`. Интерфейс Zipkin доступен по адресу `http://zipkin.local/zipkin/`.
+Интерфейс kibana доступен по адресу - http://kibana.local/, prometheus - http://prometheus.local/, grafana - http://grafana.local/.
 
 После изменения Java-кода пересоберите JAR и соответствующий образ. При повторном использовании тега `latest` перезапустите изменённый Deployment, чтобы Pod взял новый образ.
 
@@ -44,25 +45,3 @@ kubectl get pods -n bank
 
 ```powershell
 mvn test
-```
-
-# Инструкция по запуску в докер
-
-### 1. Сборка и холодный запуск
-
-в файл C:\Windows\System32\drivers\etc\hosts добавьте строку 127.0.0.1   bank-keycloak
-
-Запустите полную цепочку компиляции артефактов и сборки контейнеров одной командой:
-```bash
-# Сборка свежих .jar пакетов
-mvn clean package -DskipTests
-
-# Холодный запуск платформы с очисткой кэша
-docker compose down -v
-docker compose up -d --build
-```
-
-### 2. Доступ к локальным веб-интерфейсам
-* **Фронтенд Личного Кабинета:** [http://localhost:8084/account](http://localhost:8084/account)
-* **Панель Keycloak SSO:** [http://localhost:8080](http://localhost:8080) (Логин/Пароль: `admin` / `admin`)
-* **Тестовый пользователь:** `ivanov` / `password`
