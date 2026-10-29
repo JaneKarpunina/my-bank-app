@@ -1,5 +1,6 @@
 package ru.yandex.practicum.bank.gateway.security;
 
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
@@ -20,10 +21,9 @@ import reactor.core.publisher.Mono;
  * filters:
  * - name: JwtTokenRelay
  */
+@Slf4j
 public class JwtTokenRelayGatewayFilterFactory extends AbstractGatewayFilterFactory<Object> {
 
-    private static final Logger log =
-            LoggerFactory.getLogger(JwtTokenRelayGatewayFilterFactory.class);
 
     public JwtTokenRelayGatewayFilterFactory() {
         super(Object.class);
@@ -31,12 +31,25 @@ public class JwtTokenRelayGatewayFilterFactory extends AbstractGatewayFilterFact
 
     @Override
     public GatewayFilter apply(Object config) {
-        return (exchange, chain) ->
-                extractToken(exchange)
-                        // если токен не нашли ни в контексте, ни в заголовке — считаем, что конфигурация сломана
-                        .switchIfEmpty(Mono.error(
-                                new IllegalStateException("JWT token not found in SecurityContext or Authorization header")))
-                        .flatMap(token -> chain.filter(addToken(exchange, token)));
+        return (exchange, chain) -> {
+
+            String path = exchange.getRequest().getPath().toString();
+
+            log.debug("Aктивация фильтра проброса JWT-токена для маршрута: {}", path);
+            return extractToken(exchange)
+                    // если токен не нашли ни в контексте, ни в заголовке — считаем, что конфигурация сломана
+                    .switchIfEmpty(Mono.defer(() -> {
+                                log.warn("Внимание! JWT-токен отсутствует в запросе к пути: {}." +
+                                        " Маршрутизация отклонена шлюзом.", path);
+                                return Mono.error(new IllegalStateException("JWT token" +
+                                        " not found in SecurityContext or Authorization header"));
+                            }))
+                    .flatMap(token -> {
+                        log.debug("JWT-токен успешно извлечен для пути: {}." +
+                                " Запуск трансляции в заголовки бэкенда.", path);
+                        return chain.filter(addToken(exchange, token));
+                    });
+        };
     }
 
     /**
@@ -48,12 +61,16 @@ public class JwtTokenRelayGatewayFilterFactory extends AbstractGatewayFilterFact
         Mono<String> fromContext = ReactiveSecurityContextHolder.getContext()
                 .map(SecurityContext::getAuthentication)
                 .filter(auth -> auth instanceof JwtAuthenticationToken)
-                .map(auth -> ((JwtAuthenticationToken) auth).getToken().getTokenValue());
+                .map(auth -> ((JwtAuthenticationToken) auth).getToken().getTokenValue())
+                .doOnNext(t -> log.debug("Токен безопасности успешно извлечен " +
+                        "из ReactiveSecurityContextHolder."));
 
         Mono<String> fromHeader = Mono
                 .justOrEmpty(exchange.getRequest().getHeaders().getFirst("Authorization"))
                 .filter(header -> header.startsWith("Bearer "))
-                .map(header -> header.substring(7));
+                .map(header -> header.substring(7))
+                .doOnNext(t -> log.debug("Токен безопасности успешно извлечен" +
+                        " из входящего заголовка Authorization (Bearer)."));
 
         return fromContext.switchIfEmpty(fromHeader);
     }

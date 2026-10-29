@@ -100,4 +100,8 @@ spec:
               value: "5044"
             - name: LOGGING_LEVEL_ROOT
               value: "DEBUG"
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
+              value: "DEBUG"
+            - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_WEB_SERVER_ADAPTER_HTTPWEBHANDLERADAPTER
+              value: "TRACE"
 
