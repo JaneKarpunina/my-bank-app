@@ -49,7 +49,7 @@ public class TransferService {
             log.debug("Идемпотентный пропуск: перевод с ключом {} уже успешно завершен ранее.", idempotencyKey);
             return;
         }
-        
+
         if ("REJECTED".equals(currentStatus)) {
             log.warn("Отклонено по идемпотентности: перевод с ключом {}" +
                     " уже был ранее отклонён бэкендом.", idempotencyKey);
