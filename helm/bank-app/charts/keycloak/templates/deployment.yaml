@@ -15,10 +15,22 @@ spec:
       containers:
         - name: keycloak
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default "24.0" }}"
-          args: ["start-dev", "--import-realm"]
+          args:
+            - start-dev
+            - --import-realm
+            - --proxy-headers=xforwarded
+            - --http-enabled=true
+            - --hostname-url={{ .Values.global.keycloak.url }}
+
           ports:
             - containerPort: 8080
               name: http
+          readinessProbe:
+            httpGet:
+              path: /realms/{{ .Values.global.keycloak.realm }}
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 2
           env:
             - name: KEYCLOAK_ADMIN
               value: "admin"
@@ -26,7 +38,6 @@ spec:
               value: "admin"
             - name: JAVA_OPTS_APPEND
               value: "-Xms128m -Xmx450m -XX:MaxMetaspaceSize=150m"
-
             - name: FRONT_KEYCLOAK_CLIENT_SECRET
               valueFrom:
                 secretKeyRef:

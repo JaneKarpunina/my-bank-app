@@ -1,0 +1,36 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-provisioning-conf
+  namespace: {{ .Release.Namespace }}
+data:
+  prometheus-datasource.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-service:9090
+        isDefault: true
+        editable: true
+
+  dashboards-provider.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'Bank Dashboards'
+        orgId: 1
+        folder: 'Spring Boot Monitoring'
+        type: file
+        disableDeletion: false
+        editable: true
+        options:
+          path: /var/lib/grafana/dashboards
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bank-dashboards-json-conf
+  namespace: {{ .Release.Namespace }}
+binaryData:
+  jvm-dashboard.json: {{ .Files.Get "dashboards/jvm-dashboard.json" | b64enc }}
+  business-dashboard.json: {{ .Files.Get "dashboards/business-dashboard.json" | b64enc }}

@@ -2,6 +2,7 @@ package ru.yandex.practicum.notification.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ import org.springframework.util.backoff.FixedBackOff;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @EnableKafka
 @Configuration
 public class KafkaConsumerConfig {
@@ -50,6 +52,9 @@ public class KafkaConsumerConfig {
 
     @Bean
     public ConsumerFactory<String, String> consumerFactory() {
+
+        log.info("Конфигурация Kafka ConsumerFactory для notification-service." +
+                " Брокер: {}, GroupId: '{}'", bootstrapServers, groupId);
         Map<String, Object> props = new HashMap<>();
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
@@ -59,16 +64,23 @@ public class KafkaConsumerConfig {
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, enableAutoCommit);
         props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetReset);
 
+        log.debug("Свойства Kafka Consumer: enableAutoCommit={}, autoOffsetReset='{}'",
+                enableAutoCommit, autoOffsetReset);
+
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
     @Bean
     public ConcurrentKafkaListenerContainerFactory<String, String> kafkaListenerContainerFactory() {
+
+        log.info("Создание фабрики контейнеров kafkaListenerContainerFactory со сквозной трассировкой...");
         ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
         factory.setConsumerFactory(consumerFactory());
 
         factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.RECORD);
+
+        factory.getContainerProperties().setObservationEnabled(true);
 
         DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
 
@@ -77,6 +89,10 @@ public class KafkaConsumerConfig {
         DefaultErrorHandler errorHandler = new DefaultErrorHandler(recoverer, backOff);
 
         factory.setCommonErrorHandler(errorHandler);
+
+        log.debug("Для фабрики слушателей успешно настроен DefaultErrorHandler (DLQ Recoverer) " +
+                "и AckMode.RECORD. Опция observationEnabled=true.");
+        log.info("Контейнерная фабрика слушателей Kafka успешно зарегистрирована в контексте Spring.");
 
         return factory;
     }
