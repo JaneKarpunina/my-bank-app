@@ -1,6 +1,7 @@
 package ru.yandex.practicum.cash.advice;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -21,5 +22,12 @@ public class GlobalExceptionHandler {
 
         log.error("Критический системный сбой внутри микросервиса кассы: {}", ex.getMessage(), ex);
         return ResponseEntity.internalServerError().body(ex.getMessage());
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<String> handleIllegalState(IllegalStateException ex) {
+
+        log.warn("Конфликт состояния при обработке кассовой операции (Идемпотентный блок): {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ex.getMessage());
     }
 }

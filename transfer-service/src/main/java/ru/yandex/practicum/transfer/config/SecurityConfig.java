@@ -1,6 +1,7 @@
 package ru.yandex.practicum.transfer.config;
 
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -9,12 +10,15 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 
+@Slf4j
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
+        log.info("Инициализация цепочки фильтров безопасности SecurityFilterChain для микросервиса transfer-service...");
         http
                 .csrf(AbstractHttpConfigurer::disable)
 
@@ -24,6 +28,9 @@ public class SecurityConfig {
                 )
                 .oauth2ResourceServer(oauth2 ->
                         oauth2.jwt(Customizer.withDefaults()));
+
+        log.info("Конфигурация правил HTTP-доступа успешно применена: " +
+                "доступ к эндпоинтам /actuator/** разрешен без токена, остальные маршруты защищены JWT.");
 
         return http.build();
     }
