@@ -41,11 +41,11 @@ spec:
               value: "http://keycloak:8080/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/certs"
 
             - name: SPRING_CLOUD_GATEWAY_ROUTES_0_ID
-              value: "account-service"
+              value: "account-service-public"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_0_URI
-              value: "http://accounts:8082" # Перевод на ClusterIP DNS
+              value: "http://accounts:8082"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_0_PREDICATES_0
-              value: "Path=/accounts/**"
+              value: "Path=/accounts"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_0_FILTERS_0_NAME
               value: "TokenRelay"
 
@@ -66,6 +66,7 @@ spec:
               value: "Path=/cash,/cash/**"
             - name: SPRING_CLOUD_GATEWAY_ROUTES_2_FILTERS_0_NAME
               value: "TokenRelay"
+
             - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_CLOUD_GATEWAY
               value: "TRACE"
             - name: LOGGING_LEVEL_ORG_SPRINGFRAMEWORK_SECURITY

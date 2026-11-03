@@ -1,5 +1,7 @@
 package ru.yandex.practicum.accounts.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
@@ -7,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.accounts.dto.CashAction;
+import ru.yandex.practicum.accounts.dto.ClientInfoUpdatedEventDto;
 import ru.yandex.practicum.accounts.entity.BankAccount;
 import ru.yandex.practicum.accounts.entity.IdempotencyKey;
 import ru.yandex.practicum.accounts.entity.OutboxMessage;
@@ -27,13 +30,16 @@ public class AccountService {
     private final OutboxRepository outboxRepository;
     private final IdempotencyRepository idempotencyRepository;
     private final MeterRegistry meterRegistry;
+    private final ObjectMapper objectMapper;
 
     public AccountService(AccountRepository accountRepository, OutboxRepository outboxRepository,
-                          IdempotencyRepository idempotencyRepository, MeterRegistry meterRegistry) {
+                          IdempotencyRepository idempotencyRepository, MeterRegistry meterRegistry,
+                          ObjectMapper objectMapper) {
         this.accountRepository = accountRepository;
         this.outboxRepository = outboxRepository;
         this.idempotencyRepository = idempotencyRepository;
         this.meterRegistry = meterRegistry;
+        this.objectMapper = objectMapper;
     }
 
     @Transactional(readOnly = true)
@@ -84,10 +90,14 @@ public class AccountService {
         account.setBirthDate(newBirthDate);
         accountRepository.save(account);
 
-        String jsonPayload = String.format(
-                "{\"username\":\"%s\", \"name\":\"%s\", \"birthDate\":\"%s\"}",
-                username, newName, newBirthDate.toString()
-        );
+        String jsonPayload;
+        try {
+            ClientInfoUpdatedEventDto eventDto = new ClientInfoUpdatedEventDto(username, newName, newBirthDate);
+            jsonPayload = objectMapper.writeValueAsString(eventDto);
+        } catch (JsonProcessingException e) {
+            log.error("Критический сбой сериализации профиля для {}: {}", username, e.getMessage());
+            throw new RuntimeException("Ошибка подготовки Outbox-сообщения", e);
+        }
 
         OutboxMessage outboxMessage = new OutboxMessage();
         outboxMessage.setId(UUID.randomUUID());
@@ -123,20 +133,20 @@ public class AccountService {
             throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
         }
 
-        BankAccount sender = accountRepository.findByUsername(senderUsername)
-                .orElseThrow(() -> {
-                    log.warn("Отклонен перевод: Отправитель '{}' не зарегистрирован в системе.", senderUsername);
-                    incrementTransferFailedMetric(senderUsername, recipientUsername);
-                    return new IllegalArgumentException("Отправитель '" + senderUsername + "' не найден");
-                });
+        BankAccount sender;
+        BankAccount recipient;
 
-
-        BankAccount recipient = accountRepository.findByUsername(recipientUsername)
-                .orElseThrow(() -> {
-                    log.warn("Отклонен перевод: Получатель '{}' не зарегистрирован в системе.", recipientUsername);
-                    incrementTransferFailedMetric(senderUsername, recipientUsername);
-                    return new IllegalArgumentException("Получатель '" + recipientUsername + "' не найден");
-                });
+        if (senderUsername.compareTo(recipientUsername) < 0) {
+            sender = accountRepository.findByUsernameForUpdate(senderUsername)
+                    .orElseThrow(() -> senderNotFound(senderUsername, recipientUsername));
+            recipient = accountRepository.findByUsernameForUpdate(recipientUsername)
+                    .orElseThrow(() -> recipientNotFound(senderUsername, recipientUsername));
+        } else {
+            recipient = accountRepository.findByUsernameForUpdate(recipientUsername)
+                    .orElseThrow(() -> recipientNotFound(senderUsername, recipientUsername));
+            sender = accountRepository.findByUsernameForUpdate(senderUsername)
+                    .orElseThrow(() -> senderNotFound(senderUsername, recipientUsername));
+        }
 
         if (sender.getBalance() < amount) {
             log.warn("Отклонен перевод средств из-за нехватки баланса. Отправитель: {}, Текущий баланс: {}, Запрашиваемая сумма: {}",
@@ -160,6 +170,18 @@ public class AccountService {
                 senderUsername, amount, recipientUsername, idempotencyKey);
 
         return ResponseEntity.ok().build();
+    }
+
+    private IllegalArgumentException recipientNotFound(String senderUsername, String recipientUsername) {
+        log.warn("Отклонен перевод: Получатель '{}' не зарегистрирован в системе.", recipientUsername);
+        incrementTransferFailedMetric(senderUsername, recipientUsername);
+        return new IllegalArgumentException("Получатель '" + recipientUsername + "' не найден");
+    }
+
+    private IllegalArgumentException senderNotFound(String senderUsername, String recipientUsername) {
+        log.warn("Отклонен перевод: Отправитель '{}' не зарегистрирован в системе.", senderUsername);
+        incrementTransferFailedMetric(senderUsername, recipientUsername);
+        return new IllegalArgumentException("Отправитель '" + senderUsername + "' не найден");
     }
 
     private void incrementTransferFailedMetric(String senderUsername, String recipientUsername) {
@@ -188,7 +210,7 @@ public class AccountService {
             throw new IllegalArgumentException("Сумма операции должна быть больше нуля");
         }
 
-        BankAccount account = accountRepository.findByUsername(username)
+        BankAccount account = accountRepository.findByUsernameForUpdate(username)
                 .orElseThrow(() -> {
                     log.warn("Отклонена кассовая операция: Пользователь '{}' не найден.", username);
                     return new IllegalArgumentException("Пользователь '" + username + "' не найден");

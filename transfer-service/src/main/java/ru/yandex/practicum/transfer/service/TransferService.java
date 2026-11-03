@@ -42,18 +42,38 @@ public class TransferService {
 
     public void executeTransfer(UUID idempotencyKey, String sender, String recipient, int amount) {
 
-        String currentStatus = transactionTemplate.execute(
-                tx -> checkAndStartIdempotencyKey(idempotencyKey)
-        );
-        if ("SUCCESS".equals(currentStatus)) {
-            log.debug("Идемпотентный пропуск: перевод с ключом {} уже успешно завершен ранее.", idempotencyKey);
-            return;
+        var keyOpt = idempotencyRepository.findById(idempotencyKey);
+        boolean isRecoveryAttempt = false;
+
+        if (keyOpt.isPresent()) {
+
+            String currentStatus = keyOpt.get().getStatus();
+
+            if ("STARTED".equals(currentStatus)) {
+                log.warn("Конкурентная блокировка: попытка повторного вызова транзакции {}," +
+                        " пока она выполняется в соседнем потоке.", idempotencyKey);
+                throw new IllegalStateException("Транзакция уже обрабатывается");
+            }
+            if ("SUCCESS".equals(currentStatus)) {
+                log.debug("Идемпотентный пропуск: перевод с ключом {} уже успешно завершен ранее.", idempotencyKey);
+                return;
+            }
+
+            if ("REJECTED".equals(currentStatus)) {
+                log.warn("Отклонено по идемпотентности: перевод с ключом {}" +
+                        " уже был ранее отклонён бэкендом.", idempotencyKey);
+                throw new IllegalArgumentException("Этот перевод уже был отклонен банком");
+            }
+
+            if ("SYSTEM_ERROR".equals(currentStatus)) {
+                log.info("Обнаружен статус SYSTEM_ERROR для ключа {}. Запуск восстановления...", idempotencyKey);
+                isRecoveryAttempt = true;
+            }
         }
 
-        if ("REJECTED".equals(currentStatus)) {
-            log.warn("Отклонено по идемпотентности: перевод с ключом {}" +
-                    " уже был ранее отклонён бэкендом.", idempotencyKey);
-            throw new IllegalArgumentException("Этот перевод уже был отклонен банком");
+        if (!isRecoveryAttempt) {
+            transactionTemplate.executeWithoutResult((
+                    tx -> startIdempotencyKey(idempotencyKey)));
         }
 
         try {
@@ -81,25 +101,16 @@ public class TransferService {
         } catch (Exception e) {
 
             log.error("Критический системный сбой при выполнении перевода {} -> {}." +
-                            " Ключ {} сохранен как STARTED. Ошибка: {}",
+                            " Ключ {} сохранен как SYSTEM_ERROR. Ошибка: {}",
                     sender, recipient, idempotencyKey, e.getMessage(), e);
             transactionTemplate.executeWithoutResult(tx ->
-                    updateKeyStatus(idempotencyKey, "STARTED"));
+                    updateKeyStatus(idempotencyKey, "SYSTEM_ERROR"));
             throw new RuntimeException("Системный сбой при переводе: " + e.getMessage());
         }
     }
 
 
-    public String checkAndStartIdempotencyKey(UUID id) {
-        var keyOpt = idempotencyRepository.findById(id);
-        if (keyOpt.isPresent()) {
-            if ("STARTED".equals(keyOpt.get().getStatus())) {
-                log.warn("Конкурентная блокировка: попытка повторного вызова транзакции {}," +
-                        " пока она выполняется в соседнем потоке.", id);
-                throw new IllegalStateException("Транзакция уже обрабатывается");
-            }
-            return keyOpt.get().getStatus();
-        }
+    public void startIdempotencyKey(UUID id) {
 
         IdempotencyKey newKey = new IdempotencyKey();
         newKey.setId(id);
@@ -107,7 +118,6 @@ public class TransferService {
         idempotencyRepository.save(newKey);
 
         log.debug("Ключ идемпотентности {} не найден в БД. Создана новая запись со статусом STARTED.", id);
-        return "STARTED";
     }
 
     public void updateKeyStatus(UUID id, String status) {
@@ -129,11 +139,16 @@ public class TransferService {
                 idempotencyRepository.save(key);
             });
 
+            if (outboxRepository.existsById(id)) {
+                log.info("Идемпотентный пропуск Outbox: сообщение для транзакции {} уже было сгенерировано ранее.", id);
+                return;
+            }
+
             NotificationEventDto eventDto = new NotificationEventDto(recipient,
                     amount, sender);
 
             TransferOutboxMessage outboxMessage = new TransferOutboxMessage();
-            outboxMessage.setId(UUID.randomUUID());
+            outboxMessage.setId(id);
             outboxMessage.setEventType("TRANSFER_COMPLETED");
             outboxMessage.setPayload(objectMapper.writeValueAsString(eventDto));
             outboxMessage.setStatus("PENDING");

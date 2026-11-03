@@ -1,7 +1,10 @@
 package ru.yandex.practicum.cash.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.cash.dto.CashRequest;
 import ru.yandex.practicum.cash.service.CashService;
@@ -20,6 +23,7 @@ public class CashInternalController {
 
     @PostMapping
     public ResponseEntity<Void> processCashOperation(
+            @AuthenticationPrincipal Jwt jwt,
             @RequestHeader("X-Idempotency-Key") UUID idempotencyKey,
             @RequestBody CashRequest request
     ) {
@@ -27,6 +31,16 @@ public class CashInternalController {
         log.info("Получен внутренний запрос на проведение кассовой операции [{}]. Пользователь: {}," +
                         " Сумма: {}. Idempotency-Key: {}",
                 request.action(), request.username(), request.amount(), idempotencyKey);
+
+        String authenticatedUser = jwt.getClaimAsString("preferred_username");
+
+        if (!authenticatedUser.equals(request.username())) {
+            log.warn("Нарушение безопасности! Аутентифицированный пользователь '{}' " +
+                            "попытался провести операцию по чужому счету '{}'! Ключ: {}",
+                    authenticatedUser, request.username(), idempotencyKey);
+
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
 
         cashService.executeCash(idempotencyKey, request);
 

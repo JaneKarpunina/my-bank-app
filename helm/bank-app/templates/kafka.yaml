@@ -1,8 +1,9 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: {{ .Release.Name }}-kafka
 spec:
+  serviceName: {{ .Release.Name }}-kafka
   replicas: 1
   selector:
     matchLabels:
@@ -28,7 +29,7 @@ spec:
             - name: KAFKA_LISTENERS
               value: "PLAINTEXT://0.0.0.0:9092"
             - name: KAFKA_ADVERTISED_LISTENERS
-              value: "PLAINTEXT://{{ .Release.Name }}-kafka:9092"
+              value: "PLAINTEXT://{{ .Release.Name }}-kafka-0.{{ .Release.Name }}-kafka:9092"
             - name: KAFKA_CONTROLLER_LISTENER_NAMES
               value: "CONTROLLER"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS
@@ -43,6 +44,12 @@ spec:
               value: "1"
             - name: KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS
               value: "0"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/broker-data"
+          volumeMounts:
+            - name: kafka-data-volume
+              mountPath: /var/lib/kafka/broker-data
+              subPath: broker
 
         - name: kafka-controller
           image: apache/kafka:3.7.0
@@ -64,6 +71,21 @@ spec:
               value: "2@127.0.0.1:9093"
             - name: KAFKA_LISTENER_SECURITY_PROTOCOL_MAP
               value: "CONTROLLER:PLAINTEXT"
+            - name: KAFKA_LOG_DIRS
+              value: "/var/lib/kafka/controller-data"
+          volumeMounts:
+            - name: kafka-data-volume
+              mountPath: /var/lib/kafka/controller-data
+              subPath: controller
+
+  volumeClaimTemplates:
+    - metadata:
+        name: kafka-data-volume
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 1Gi
 ---
 apiVersion: v1
 kind: Service

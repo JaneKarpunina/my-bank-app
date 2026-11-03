@@ -46,6 +46,8 @@ public class CashService {
         String action = request.action() != null ? request.action().toString() : "UNKNOWN";
 
         var keyOpt = idempotencyRepository.findById(idempotencyKey);
+        boolean isRecoveryAttempt = false;
+
         if (keyOpt.isPresent()) {
             String status = keyOpt.get().getStatus();
             if ("SUCCESS".equals(status)) {
@@ -61,11 +63,19 @@ public class CashService {
                         "ранее отклонённой банком операции {}.", idempotencyKey);
                 throw new IllegalArgumentException("Эта операция уже была отклонена банком");
             }
+
+            if ("SYSTEM_ERROR".equals(status)) {
+                log.info("Обнаружен статус SYSTEM_ERROR для ключа {}. Запуск восстановления...", idempotencyKey);
+                isRecoveryAttempt = true;
+            }
         }
 
-        log.debug("Регистрация ключа идемпотентности {} со статусом STARTED для пользователя {}.", idempotencyKey, username);
-        transactionTemplate.executeWithoutResult(tx ->
-                saveKeyStatus(idempotencyKey, "STARTED"));
+        if (!isRecoveryAttempt) {
+            log.debug("Регистрация ключа идемпотентности {} со статусом STARTED для пользователя {}.",
+                    idempotencyKey, username);
+            transactionTemplate.executeWithoutResult(tx ->
+                    saveKeyStatus(idempotencyKey, "STARTED"));
+        }
 
         try {
             AccountOperationDto operationDto = new AccountOperationDto(
@@ -102,11 +112,11 @@ public class CashService {
         } catch (Exception e) {
 
             log.error("Критический системный сбой при вызове AccountsClient для пользователя {}. " +
-                            "Ключ {} сохранен как STARTED. Ошибка: {}",
+                            "Ключ {} сохранен как SYSTEM_ERROR. Ошибка: {}",
                     username, idempotencyKey, e.getMessage(), e);
 
             transactionTemplate.executeWithoutResult(tx ->
-                    saveKeyStatus(idempotencyKey, "STARTED"));
+                    saveKeyStatus(idempotencyKey, "SYSTEM_ERROR"));
             throw new RuntimeException("Системный сбой при обналичивании: " + e.getMessage());
         }
     }
@@ -123,8 +133,13 @@ public class CashService {
     public void saveSuccessStateAndOutbox(UUID id, CashRequest request) throws JsonProcessingException {
         saveKeyStatus(id, "SUCCESS");
 
+        if (outboxRepository.existsById(id)) {
+            log.info("Идемпотентный пропуск Outbox: сообщение для транзакции {} уже было сгенерировано ранее.", id);
+            return;
+        }
+
         CashOutboxMessage outboxMessage = new CashOutboxMessage();
-        outboxMessage.setId(UUID.randomUUID());
+        outboxMessage.setId(id);
         outboxMessage.setEventType("CASH_OPERATION_COMPLETED");
         outboxMessage.setPayload(objectMapper.writeValueAsString(request));
         outboxMessage.setStatus("PENDING");
