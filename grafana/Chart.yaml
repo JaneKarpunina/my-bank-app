@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bank-grafana
+description: "Grafana dashboard engine for Bank Microservices"
+type: application
+version: 1.0.0
+appVersion: "10.4.1"

@@ -37,6 +37,7 @@ spec:
             - configMapRef:
                 name: {{ .Release.Name }}-kafka-config
           env:
+
             - name: SERVER_ADDRESS
               value: "0.0.0.0"
             - name: SPRING_CLOUD_CONSUL_ENABLED
@@ -45,6 +46,10 @@ spec:
               value: "false"
             - name: SPRING_CLOUD_CONSUL_DISCOVERY_ENABLED
               value: "false"
+            - name: SPRING_APPLICATION_NAME
+              value: "accounts-service"
+#            - name: JAVA_TOOL_OPTIONS
+#              value: "-Dmanagement.tracing.web.client.lookup-with-observation=true"
 
             - name: SPRING_DATASOURCE_URL
               value: "jdbc:postgresql://bank-postgres:5432/account_db"
@@ -70,13 +75,38 @@ spec:
             - name: SPRING_CLOUD_DISCOVERY_ENABLED
               value: "false"
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI
-              value: "http://keycloak:8080/realms/bank-realm"
+              value: "{{ .Values.global.keycloak.url }}/realms/{{ .Values.global.keycloak.realm }}"
             - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
-              value: "http://keycloak:8080/realms/bank-realm/protocol/openid-connect/certs"
+              value: "http://keycloak:8080/realms/{{ .Values.global.keycloak.realm }}/protocol/openid-connect/certs"
 
-#            - name: APP_SERVICES_NOTIFICATION_URL
-#              value: "http://notification:8086"
             - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
               value: "{{ .Release.Name }}-kafka:9092"
             - name: APP_KAFKA_TOPICS_NOTIFICATION
               value: "{{ .Values.global.notificationTopic }}"
+#            - name: SPRING_ZIPKIN_BASE_URL
+#              value: "http://zipkin:9411"
+            - name: MANAGEMENT_ZIPKIN_TRACING_ENDPOINT
+              value: "http://zipkin:9411/api/v2/spans"
+
+            - name: MANAGEMENT_TRACING_PROPAGATION_TYPE
+              value: "B3"
+
+            - name: MANAGEMENT_TRACING_ENABLED
+              value: "true"
+            - name: MANAGEMENT_TRACING_SAMPLING_PROBABILITY
+              value: "1.0"
+            - name: LOGGING_LEVEL_IO_MICROMETER_TRACING
+              value: "DEBUG"
+            - name: MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE
+              value: "health,info,metrics,tracing,prometheus"
+            - name: SPRING_KAFKA_TEMPLATE_OBSERVATION_ENABLED
+              value: "true"
+            - name: LOGSTASH_HOST
+              value: "logstash"
+            - name: LOGSTASH_PORT
+              value: "5044"
+            - name: LOGGING_LEVEL_ROOT
+              value: "DEBUG"
+
+#            - name: JAVA_TOOL_OPTIONS
+#              value: "-Dmanagement.tracing.propagation.type=B3 -Dmanagement.tracing.enabled=true"

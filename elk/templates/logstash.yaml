@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline-config
+  namespace: {{ .Release.Namespace }}
+data:
+  logstash.conf: |
+    input {
+      tcp {
+        port => 5044
+        codec => json_lines
+      }
+    }
+
+    filter {
+      if [message] =~ "password" or [message] =~ "secret" {
+        mutate {
+          gsub => [
+            "message", "password=[^&\s,)]+", "password=******",
+            "message", '"password"\s*:\s*"[^"]+"', '"password":"******"'
+          ]
+        }
+      }
+    
+      if [message] =~ "account" or [message] =~ "bill" {
+        mutate {
+          gsub => [
+            "message", "\b\d{12}(\d{4})\b", "************\1"
+          ]
+        }
+      }
+    }
+
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch:9200"]
+        index => "bank-logs-%{+YYYY.MM.dd}"
+      }
+    }
+---
+# ... верхняя часть с ConfigMap остается без изменений ...
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: "docker.elastic.co/logstash/logstash-oss:7.17.10"
+          env:
+            - name: LS_JAVA_OPTS
+              value: "-Xms256m -Xmx256m"
+
+            - name: pipeline.geoip.database.path
+              value: ""
+          ports:
+            - containerPort: 5044
+              name: input-port
+          volumeMounts:
+            - name: config-volume
+              mountPath: /usr/share/logstash/pipeline/logstash.conf
+              subPath: logstash.conf
+      volumes:
+        - name: config-volume
+          configMap:
+            name: logstash-pipeline-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: {{ .Release.Namespace }}
+spec:
+  ports:
+    - port: 5044
+      targetPort: 5044
+      name: tcp-input
+  selector:
+    app: logstash

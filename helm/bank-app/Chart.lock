@@ -1,6 +1,27 @@
 dependencies:
-- name: kafka
-  repository: oci://registry-1.docker.io/bitnamicharts
-  version: 31.2.0
-digest: sha256:a5c33da5ad69dd0737026adfaae249fb1143d602fb39c2eab9083941e1f1bc69
-generated: "2026-09-14T17:28:05.1489112+03:00"
+- name: accounts
+  repository: file://charts/accounts
+  version: 0.1.0
+- name: cash
+  repository: file://charts/cash
+  version: 0.1.0
+- name: front
+  repository: file://charts/front
+  version: 0.1.0
+- name: gateway
+  repository: file://charts/gateway
+  version: 0.1.0
+- name: keycloak
+  repository: file://charts/keycloak
+  version: 0.1.0
+- name: notification
+  repository: file://charts/notification
+  version: 0.1.0
+- name: postgres
+  repository: file://charts/postgres
+  version: 0.1.0
+- name: transfer
+  repository: file://charts/transfer
+  version: 0.1.0
+digest: sha256:00820b12588bb8defee935e63bb07f74c52d2e1aa48419bc6d66e7193a5c55e6
+generated: "2026-11-02T15:52:05.0504011+02:00"

@@ -56,7 +56,7 @@
       "credentials": [
         { "type": "password", "value": "password", "temporary": false }
       ],
-      "realmRoles": ["ROLE_BALANCE_MODIFIER"]
+      "realmRoles": []
     },
     {
       "username": "service-account-transfer-service-client",

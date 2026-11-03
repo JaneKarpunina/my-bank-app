@@ -1,5 +1,6 @@
 package ru.yandex.practicum.mybankfront.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -27,6 +28,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
+@Slf4j
 @Controller
 public class MainController {
 
@@ -52,10 +54,18 @@ public class MainController {
         String currentUsername = principal.getAttribute("preferred_username");
         String userJwtToken = userClient.getAccessToken().getTokenValue();
 
+        log.info("Пользователь '{}' запрашивает страницу личного кабинета /account.", currentUsername);
+
         UUID idempotencyKey = UUID.randomUUID();
+
+        log.debug("Сгенерирован новый Idempotency-Key для сессии пользователя {}: {}",
+                currentUsername, idempotencyKey);
         model.addAttribute("idempotencyKey", idempotencyKey);
 
         try {
+
+            log.debug("Фронтенд отправляет исходящий вызов " +
+                    "к API Gateway для получения баланса пользователя {}.", currentUsername);
             AccountResponse accountData = gatewayClient.getAccountData("/accounts", userJwtToken);
 
             if (accountData != null) {
@@ -63,9 +73,14 @@ public class MainController {
                 model.addAttribute("birthdate", accountData.getBirthdate().format(DateTimeFormatter.ISO_DATE));
                 model.addAttribute("sum", accountData.getSum());
                 model.addAttribute("accounts", accountData.getAccounts());
+
+                log.debug("Данные аккаунта для {} успешно получены и добавлены в UI модель.", currentUsername);
             }
 
         } catch (Exception e) {
+
+            log.error("Критический сбой! Не удалось загрузить баланс для пользователя {}. Ошибка: {}",
+                    currentUsername, e.getMessage(), e);
 
             List<String> existingErrors = (List<String>) model.getAttribute("errors");
             List<String> finalErrors = new ArrayList<>();
@@ -79,7 +94,7 @@ public class MainController {
             model.addAttribute("errors", finalErrors);
 
             model.addAttribute("name", currentUsername);
-            model.addAttribute("birthdate", "");
+            model.addAttribute("birthdate", LocalDate.now());
             model.addAttribute("sum", 0);
             model.addAttribute("accounts", Collections.emptyList());
         }
@@ -96,17 +111,28 @@ public class MainController {
             @RequestParam("idempotencyKey") UUID idempotencyKey,
             RedirectAttributes redirectAttributes
     ) {
+        String currentUsername = principal.getAttribute("preferred_username");
         String userJwtToken = userClient.getAccessToken().getTokenValue();
         List<String> errorList = new ArrayList<>();
+
+        log.info("Пользователь '{}' инициировал обновление профиля. Новое имя: '{}', ДР: {}. Idempotency-Key: {}",
+                currentUsername, name, birthdate, idempotencyKey);
 
         try {
             UpdateAccountRequest updateRequest = new UpdateAccountRequest(name, birthdate);
 
             gatewayClient.sendPostOperation("/accounts", userJwtToken, idempotencyKey, updateRequest);
 
+            log.info("Профиль пользователя {} успешно обновлен через API Gateway.", currentUsername);
+
         } catch (WebClientResponseException e) {
-            errorList.add("Не удалось сохранить изменения: " + e.getResponseBodyAsString());
+
+            String errorMsg = e.getResponseBodyAsString();
+            log.warn("Бизнес-отказ при обновлении профиля {}. Ответ шлюза: {}", currentUsername, errorMsg);
+            errorList.add("Не удалось сохранить изменения: " + errorMsg);
         } catch (Exception e) {
+
+            log.error("Системное исключение при сохранении профиля {}: {}", currentUsername, e.getMessage(), e);
             errorList.add("Системная ошибка при сохранении профиля: " + e.getMessage());
         }
 
@@ -132,14 +158,23 @@ public class MainController {
         String userJwtToken = userClient.getAccessToken().getTokenValue();
         List<String> errorList = new ArrayList<>();
 
+        log.info("Пользователь '{}' запросил кассовую операцию [{}]. Сумма: {}. Idempotency-Key: {}",
+                currentUsername, action, value, idempotencyKey);
+
         try {
             CashRequest cashBody = new CashRequest(currentUsername, value, action);
 
             gatewayClient.sendPostOperation("/cash", userJwtToken, idempotencyKey, cashBody);
 
+            log.info("Кассовая операция [{}] на сумму {} для пользователя {} успешно выполнена.",
+                    action, value, currentUsername);
+
         } catch (WebClientResponseException e) {
-            errorList.add(e.getResponseBodyAsString());
+            String errorMsg = e.getResponseBodyAsString();
+            log.warn("Отказ проведения кассовой операции [{}] для {}. Причина: {}", action, currentUsername, errorMsg);
+            errorList.add(errorMsg);
         } catch (Exception e) {
+            log.error("Критический сбой кассовой операции для {}: {}", currentUsername, e.getMessage(), e);
             errorList.add("Системная ошибка операции с наличными: " + e.getMessage());
         }
 
@@ -162,14 +197,24 @@ public class MainController {
         String currentUsername = principal.getAttribute("preferred_username");
         String userJwtToken = userClient.getAccessToken().getTokenValue();
 
+        log.info("Пользователь '{}' инициировал перевод денег. Получатель: '{}', Сумма: {}. Idempotency-Key: {}",
+                currentUsername, loginRecipient, value, idempotencyKey);
+
         try {
 
             gatewayClient.sendPostOperation("/transfers", userJwtToken, idempotencyKey,
                     new TransferRequest(currentUsername, loginRecipient, value));
 
+            log.info("Перевод средств от {} к {} на сумму {} успешно проведен.",
+                    currentUsername, loginRecipient, value);
+
         } catch (WebClientResponseException e) {
-            redirectAttributes.addFlashAttribute("errors", List.of(e.getResponseBodyAsString()));
+            String errorMsg = e.getResponseBodyAsString();
+            log.warn("Отказ в переводе средств от {} к {}. Причина: {}", currentUsername, loginRecipient, errorMsg);
+            redirectAttributes.addFlashAttribute("errors", List.of(errorMsg));
         } catch (Exception e) {
+            log.error("Системный сбой при выполнении перевода от {} к {}: {}",
+                    currentUsername, loginRecipient, e.getMessage(), e);
             redirectAttributes.addFlashAttribute("errors", List.of("Системная ошибка: " + e.getMessage()));
         }
         return "redirect:/account";
