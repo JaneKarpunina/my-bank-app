@@ -29,7 +29,7 @@ spec:
             - name: KAFKA_LISTENERS
               value: "PLAINTEXT://0.0.0.0:9092"
             - name: KAFKA_ADVERTISED_LISTENERS
-              value: "PLAINTEXT://{{ .Release.Name }}-kafka-0.{{ .Release.Name }}-kafka:9092"
+              value: "PLAINTEXT://{{ .Release.Name }}-kafka:9092"
             - name: KAFKA_CONTROLLER_LISTENER_NAMES
               value: "CONTROLLER"
             - name: KAFKA_CONTROLLER_QUORUM_VOTERS

@@ -72,8 +72,14 @@ public class TransferService {
         }
 
         if (!isRecoveryAttempt) {
-            transactionTemplate.executeWithoutResult((
-                    tx -> startIdempotencyKey(idempotencyKey)));
+            Integer inserted = transactionTemplate.execute(tx ->
+                    idempotencyRepository.tryStartTransfer(idempotencyKey)
+            );
+
+            if (inserted == null || inserted == 0) {
+                log.warn("Блокировка транзакции {}: обнаружен конкурентный запрос на вставку.", idempotencyKey);
+                throw new IllegalStateException("Операция уже выполняется в соседнем потоке");
+            }
         }
 
         try {
@@ -107,17 +113,6 @@ public class TransferService {
                     updateKeyStatus(idempotencyKey, "SYSTEM_ERROR"));
             throw new RuntimeException("Системный сбой при переводе: " + e.getMessage());
         }
-    }
-
-
-    public void startIdempotencyKey(UUID id) {
-
-        IdempotencyKey newKey = new IdempotencyKey();
-        newKey.setId(id);
-        newKey.setStatus("STARTED");
-        idempotencyRepository.save(newKey);
-
-        log.debug("Ключ идемпотентности {} не найден в БД. Создана новая запись со статусом STARTED.", id);
     }
 
     public void updateKeyStatus(UUID id, String status) {

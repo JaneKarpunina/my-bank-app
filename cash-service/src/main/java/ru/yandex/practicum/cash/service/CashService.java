@@ -73,8 +73,15 @@ public class CashService {
         if (!isRecoveryAttempt) {
             log.debug("Регистрация ключа идемпотентности {} со статусом STARTED для пользователя {}.",
                     idempotencyKey, username);
-            transactionTemplate.executeWithoutResult(tx ->
-                    saveKeyStatus(idempotencyKey, "STARTED"));
+
+            Integer inserted = transactionTemplate.execute(tx ->
+                    idempotencyRepository.tryStartCash(idempotencyKey)
+            );
+
+            if (inserted == null || inserted == 0) {
+                log.warn("Блокировка транзакции {}: обнаружен конкурентный запрос на вставку.", idempotencyKey);
+                throw new IllegalStateException("Операция уже выполняется в соседнем потоке");
+            }
         }
 
         try {
@@ -126,6 +133,8 @@ public class CashService {
         key.setId(id);
         key.setStatus(status);
         idempotencyRepository.save(key);
+
+        idempotencyRepository.tryStartCash(id);
 
         log.debug("Статус ключа идемпотентности {} обновлен в БД на: {}", id, status);
     }

@@ -22,3 +22,21 @@ CREATE TABLE IF NOT EXISTS account_idempotency (
 );
 
 CREATE INDEX IF NOT EXISTS idx_outbox_status_created ON outbox_messages(status, created_at);
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS operation_type VARCHAR(32);
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS request_username VARCHAR(255);
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS request_amount INTEGER;
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS request_action VARCHAR(16);
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS request_sender VARCHAR(255);
+
+ALTER TABLE account_idempotency
+    ADD COLUMN IF NOT EXISTS request_recipient VARCHAR(255);

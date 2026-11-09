@@ -5,8 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 import ru.yandex.practicum.accounts.dto.CashAction;
 import ru.yandex.practicum.accounts.dto.ClientInfoUpdatedEventDto;
@@ -117,20 +119,62 @@ public class AccountService {
         log.info("Профиль пользователя {} успешно обновлен. Сгенерировано Outbox-событие CLIENT_INFO_UPDATED.", username);
     }
 
-    @Transactional
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public ResponseEntity<Void> executeMoneyMovement(String senderUsername, String recipientUsername, int amount,
                                                      UUID idempotencyKey) {
 
-        if (idempotencyRepository.existsById(idempotencyKey)) {
-            log.debug("Повторный запрос перевода. Ключ идемпотентности {} уже обработан. Возвращаем HTTP 200.", idempotencyKey);
-            return ResponseEntity.ok().build();
+        if (idempotencyKey == null) {
+            throw new IllegalArgumentException("Не указан ключ идемпотентности");
         }
 
+        if (senderUsername == null || senderUsername.isBlank()) {
+            throw new IllegalArgumentException("Не указан отправитель");
+        }
+
+        if (recipientUsername == null || recipientUsername.isBlank()) {
+            throw new IllegalArgumentException("Не указан получатель");
+        }
 
         if (amount <= 0) {
-            log.warn("Отклонен перевод от {} к {}: Недопустимая сумма операции {}.", senderUsername, recipientUsername, amount);
+            log.warn("Отклонен перевод от {} к {}: Недопустимая сумма операции {}.",
+                    senderUsername, recipientUsername, amount);
             incrementTransferFailedMetric(senderUsername, recipientUsername);
             throw new IllegalArgumentException("Сумма перевода должна быть больше нуля");
+        }
+
+        int inserted = idempotencyRepository.tryStartTransfer(
+                idempotencyKey,
+                senderUsername,
+                recipientUsername,
+                amount
+        );
+
+        if (inserted == 0) {
+            IdempotencyKey previous = idempotencyRepository.findById(idempotencyKey)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "После конфликта вставки запись операции не найдена"
+                    ));
+
+            boolean sameRequest =
+                    "TRANSFER".equals(previous.getOperationType())
+                            && senderUsername.equals(previous.getRequestSender())
+                            && Integer.valueOf(amount).equals(previous.getRequestAmount())
+                            && recipientUsername.equals(previous.getRequestRecipient());
+
+            if (!sameRequest) {
+                throw new IllegalArgumentException(
+                        "Этот ключ идемпотентности уже использован для другой операции"
+                );
+            }
+
+            if ("SUCCESS".equals(previous.getStatus())) {
+                return ResponseEntity.ok().build();
+            }
+
+            throw new IllegalStateException(
+                    "Операция с этим ключом не имеет подтверждённого результата: "
+                            + previous.getStatus()
+            );
         }
 
         BankAccount sender;
@@ -149,10 +193,18 @@ public class AccountService {
         }
 
         if (sender.getBalance() < amount) {
-            log.warn("Отклонен перевод средств из-за нехватки баланса. Отправитель: {}, Текущий баланс: {}, Запрашиваемая сумма: {}",
+            log.warn("Отклонен перевод средств из-за нехватки баланса. Отправитель: {}," +
+                            " Текущий баланс: {}, Запрашиваемая сумма: {}",
                     senderUsername, sender.getBalance(), amount);
             incrementTransferFailedMetric(senderUsername, recipientUsername);
             throw new IllegalArgumentException("Недостаточно средств на счете пользователя " + senderUsername);
+        }
+
+        if (recipient.getBalance() > Integer.MAX_VALUE - amount) {
+            incrementTransferFailedMetric(senderUsername, recipientUsername);
+            throw new IllegalArgumentException(
+                    "После пополнения баланс получателя превысит допустимое значение"
+            );
         }
 
         sender.setBalance(sender.getBalance() - amount);
@@ -161,10 +213,12 @@ public class AccountService {
         accountRepository.save(sender);
         accountRepository.save(recipient);
 
-        IdempotencyKey key = new IdempotencyKey();
-        key.setId(idempotencyKey);
-        key.setStatus("SUCCESS");
-        idempotencyRepository.save(key);
+        int completed = idempotencyRepository.markTransferSuccess(idempotencyKey);
+        if (completed != 1) {
+            throw new IllegalStateException(
+                    "Не удалось завершить операцию с ключом " + idempotencyKey
+            );
+        }
 
         log.info("Транзакция перевода выполнена успешно! {} перевел {} рублей пользователю {}. Ключ идемпотентности: {}",
                 senderUsername, amount, recipientUsername, idempotencyKey);
@@ -193,58 +247,108 @@ public class AccountService {
                 .increment();
     }
 
-    @Transactional
-    public ResponseEntity<Void>  executeCashOperation(String username, int amount, CashAction action,
-                                                      UUID idempotencyKey) {
-
-        if (idempotencyRepository.existsById(idempotencyKey)) {
-            log.debug("Повторный запрос кассовой операции. Ключ {} уже зафиксирован.", idempotencyKey);
-            return ResponseEntity.ok().build();
+    @Transactional(isolation = Isolation.READ_COMMITTED)
+    public ResponseEntity<Void> executeCashOperation(
+            String username,
+            int amount,
+            CashAction action,
+            UUID idempotencyKey
+    ) {
+        if (idempotencyKey == null) {
+            throw new IllegalArgumentException("Не указан ключ идемпотентности");
         }
-
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Не указан пользователь");
+        }
+        if (action == null) {
+            throw new IllegalArgumentException("Не указано кассовое действие");
+        }
         if (amount <= 0) {
-            log.warn("Отклонена кассовая операция [{}]: Недопустимая сумма {}.", action, amount);
             if (action == CashAction.GET) {
                 incrementBankWithdrawalFailedMetric(username);
             }
             throw new IllegalArgumentException("Сумма операции должна быть больше нуля");
         }
 
+        int inserted = idempotencyRepository.tryStartCash(
+                idempotencyKey,
+                username,
+                amount,
+                action.name()
+        );
+
+        if (inserted == 0) {
+            IdempotencyKey previous = idempotencyRepository.findById(idempotencyKey)
+                    .orElseThrow(() -> new IllegalStateException(
+                            "После конфликта вставки запись операции не найдена"
+                    ));
+
+            boolean sameRequest =
+                    "CASH".equals(previous.getOperationType())
+                            && username.equals(previous.getRequestUsername())
+                            && Integer.valueOf(amount).equals(previous.getRequestAmount())
+                            && action.name().equals(previous.getRequestAction());
+
+            if (!sameRequest) {
+                throw new IllegalArgumentException(
+                        "Этот ключ идемпотентности уже использован для другой операции"
+                );
+            }
+
+            if ("SUCCESS".equals(previous.getStatus())) {
+                return ResponseEntity.ok().build();
+            }
+
+            throw new IllegalStateException(
+                    "Операция с этим ключом не имеет подтверждённого результата: "
+                            + previous.getStatus()
+            );
+        }
+
         BankAccount account = accountRepository.findByUsernameForUpdate(username)
-                .orElseThrow(() -> {
-                    log.warn("Отклонена кассовая операция: Пользователь '{}' не найден.", username);
-                    return new IllegalArgumentException("Пользователь '" + username + "' не найден");
-                });
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Пользователь '" + username + "' не найден"
+                ));
 
         if (action == CashAction.PUT) {
-            account.setBalance(account.getBalance() + amount);
+            if (account.getBalance() > Integer.MAX_VALUE - amount) {
+                throw new IllegalArgumentException(
+                        "После пополнения баланс превысит допустимое значение"
+                );
+            }
 
-            log.info("Баланс аккаунта {} успешно пополнен на сумму {}. Итоговый баланс: {}",
-                    username, amount, account.getBalance());
+            account.setBalance(account.getBalance() + amount);
 
         } else if (action == CashAction.GET) {
             if (account.getBalance() < amount) {
-                log.warn("Атака на кассу / Подозрительная активность! Недостаточно средств для снятия." +
-                                " Пользователь: '{}', Баланс: {}, Запрос: {}",
-                        username, account.getBalance(), amount);
                 incrementBankWithdrawalFailedMetric(username);
-                throw new IllegalArgumentException("Недостаточно виртуальных средств на счете для снятия наличных");
+                throw new IllegalArgumentException(
+                        "Недостаточно средств на счёте"
+                );
             }
 
-            log.info("Пользователь '{}' успешно снял {} виртуальных средств со счета. Остаток: {}",
-                    username, amount, account.getBalance());
             account.setBalance(account.getBalance() - amount);
+
         } else {
-            log.warn("Попытка выполнения неизвестного типа кассового действия: {}", action);
-            throw new IllegalArgumentException("Неподдерживаемое действие: " + action);
+            throw new IllegalArgumentException(
+                    "Неподдерживаемое кассовое действие: " + action
+            );
         }
 
         accountRepository.save(account);
 
-        IdempotencyKey key = new IdempotencyKey();
-        key.setId(idempotencyKey);
-        key.setStatus("SUCCESS");
-        idempotencyRepository.save(key);
+        int completed = idempotencyRepository.markCashSuccess(idempotencyKey);
+        if (completed != 1) {
+            throw new IllegalStateException(
+                    "Не удалось завершить операцию с ключом " + idempotencyKey
+            );
+        }
+
+        log.info(
+                "Кассовая операция {} завершена для пользователя {}. "
+                        + "Сумма: {}, итоговый баланс: {}, ключ: {}",
+                action, username, amount, account.getBalance(), idempotencyKey
+        );
 
         return ResponseEntity.ok().build();
     }
