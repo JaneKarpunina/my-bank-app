@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AmplicodePersistenceUnitSettings">
+    <persistence-units>
+      <persistence-unit moduleName="cash-service" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum.cash" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="account-service" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum.accounts" />
+        </packages>
+      </persistence-unit>
+      <persistence-unit moduleName="transfer-service" name="Default">
+        <packages>
+          <package value="ru.yandex.practicum.transfer" />
+        </packages>
+      </persistence-unit>
+    </persistence-units>
+  </component>
+</project>

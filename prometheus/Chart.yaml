@@ -1,0 +1,6 @@
+apiVersion: v2
+name: bank-prometheus
+description: A lightweight Helm chart for Bank Prometheus monitoring server
+type: application
+version: 1.0.0
+appVersion: "v2.45.0"

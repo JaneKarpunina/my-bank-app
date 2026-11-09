@@ -2,6 +2,7 @@ package ru.yandex.practicum.transfer.scheduler;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+@Slf4j
 @Component
 public class TransferOutboxScheduler {
 
@@ -45,8 +47,14 @@ public class TransferOutboxScheduler {
     @Scheduled(fixedDelay = 5000)
     public void processTransferOutboxMessages() {
 
+        log.debug("Сканирование таблицы Transfer Outbox на наличие записей в статусе PENDING...");
+
         List<TransferOutboxMessage> pendingMessages = outboxRepository.findByStatusOrderByCreatedAtAsc("PENDING");
         LocalDateTime now = LocalDateTime.now();
+
+        if (!pendingMessages.isEmpty()) {
+            log.info("Обнаружено {} событий перевода в статусе PENDING для публикации в Kafka.", pendingMessages.size());
+        }
 
         for (TransferOutboxMessage message : pendingMessages) {
 
@@ -54,14 +62,20 @@ public class TransferOutboxScheduler {
 
             if (minutesAge > TIME_INTERVAL && minutesAge < DAY_INTERVAL) {
                 if (ThreadLocalRandom.current().nextDouble() > 0.30) {
+                    log.debug("Сообщение перевода {} остывает (возраст {} мин). Пропуск 70% цикла.",
+                            message.getId(), minutesAge);
                     continue; // Пропускаем 70% циклов для остывающих PENDING сообщений
                 }
             } else if (minutesAge >= DAY_INTERVAL) {
                 if (ThreadLocalRandom.current().nextDouble() > 0.02) {
+                    log.debug("Сообщение перевода {} устарело (старше суток). Пропуск 98% цикла.", message.getId());
                     continue; // Пропускаем 98% циклов для сообщений старше суток
                 }
             }
             try {
+
+                log.debug("Подготовка к асинхронной публикации события перевода:" +
+                        " ID={}, Тип={}", message.getId(), message.getEventType());
 
                 EventEnvelope envelope = new EventEnvelope(
                         message.getId(),
@@ -77,13 +91,18 @@ public class TransferOutboxScheduler {
 
                 outboxStatusService.updateStatus(message.getId(), "PROCESSED");
 
+                log.info("Событие перевода Outbox успешно отправлено в Kafka топик '{}'. ID сообщения: {}, Тип: {}",
+                        notificationTopic, message.getId(), message.getEventType());
+
             } catch (JsonProcessingException e) {
-                System.err.println("Ошибка отправки outbox сообщения " + message.getId() + ": " + e.getMessage());
+                log.warn("Ошибка JSON-сериализации сообщения перевода {}: {}. Статус изменен на FAILED.",
+                        message.getId(), e.getMessage());
 
                 outboxStatusService.updateStatus(message.getId(), "FAILED");
             }
             catch(Exception e) {
-                System.err.println("Ошибка отправки outbox сообщения " + message.getId() + ": " + e.getMessage());
+                log.error("Критический сбой доставки сообщения перевода {} в брокер Kafka: {}",
+                        message.getId(), e.getMessage(), e);
             }
         }
     }
