@@ -41,3 +41,10 @@ kubectl get pods -n bank
 
 ```powershell
 mvn test
+```
+
+Для запуска тестов helm запустить команду
+
+```powershell
+helm test my-bank-release -n bank
+```
