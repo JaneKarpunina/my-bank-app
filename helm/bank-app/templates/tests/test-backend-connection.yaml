@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ .Release.Name }}-backend-test"
+  labels:
+    helm.sh/chart: "{{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}"
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-failed
+spec:
+  containers:
+    - name: wget
+      image: curlimages/curl:8.5.0
+      command: ['curl']
+      args: ['-f', 'http://gateway:8085/actuator/health']
+  restartPolicy: Never
