@@ -29,10 +29,6 @@ minikube -p bank-app image build -t my-registry/my-bank-front-app:latest .\my-ba
 
 ```powershell
 helm upgrade --install my-bank-release .\helm\bank-app -n bank --create-namespace
-helm upgrade --install zipkin .\zipkin -n bank
-helm upgrade --install bank-prometheus .\prometheus -n bank
-helm upgrade --install bank-grafana .\grafana -n bank
-helm upgrade --install bank-logging .\elk -n bank
 kubectl get pods -n bank
 ```
 

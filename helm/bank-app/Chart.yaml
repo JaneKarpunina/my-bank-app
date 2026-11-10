@@ -37,3 +37,19 @@ dependencies:
   - name: transfer
     version: 0.1.0
     repository: "file://charts/transfer"
+
+  - name: zipkin
+    version: 1.0.0
+    repository: "file://charts/zipkin"
+
+  - name: bank-prometheus
+    version: 1.0.0
+    repository: "file://charts/prometheus"
+
+  - name: bank-grafana
+    version: 1.0.0
+    repository: "file://charts/grafana"
+
+  - name: bank-elk
+    version: 1.0.0
+    repository: "file://charts/elk"
