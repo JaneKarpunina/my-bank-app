@@ -23,5 +23,17 @@ dependencies:
 - name: transfer
   repository: file://charts/transfer
   version: 0.1.0
-digest: sha256:00820b12588bb8defee935e63bb07f74c52d2e1aa48419bc6d66e7193a5c55e6
-generated: "2026-11-02T15:52:05.0504011+02:00"
+- name: zipkin
+  repository: file://charts/zipkin
+  version: 1.0.0
+- name: bank-prometheus
+  repository: file://charts/prometheus
+  version: 1.0.0
+- name: bank-grafana
+  repository: file://charts/grafana
+  version: 1.0.0
+- name: bank-elk
+  repository: file://charts/elk
+  version: 1.0.0
+digest: sha256:e11643806e9aaae65e2e55ff8c46a38f61e98c367f94135a32aa12a67c431d3f
+generated: "2026-11-10T12:15:49.6905907+02:00"
